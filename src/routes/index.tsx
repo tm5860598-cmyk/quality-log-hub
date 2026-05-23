@@ -72,7 +72,7 @@ const T = {
     invalidUsername: "Enter a username", invalidPassword: "Enter a password",
     titleRequired: "Report title is required",
   },
-} as const;
+};
 
 const sanitizeUsername = (u: string) => u.trim().toLowerCase();
 const userToEmail = (u: string) => `${sanitizeUsername(u)}@app.local`;
