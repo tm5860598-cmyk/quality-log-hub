@@ -49,8 +49,8 @@ const T = {
     required: "هذا الحقل مطلوب", minRowError: "يجب إدخال مشكلة وإجراء واحد على الأقل",
     welcome: "مرحبا", role_owner: "المالك", role_user: "مستخدم",
     noReports: "لا توجد تقارير محفوظة بعد",
-    usernameHelp: "حروف وأرقام و _ فقط (3-20 حرف)", passwordHelp: "6 أحرف على الأقل",
-    invalidUsername: "اسم المستخدم غير صالح", invalidPassword: "كلمة السر قصيرة جداً",
+    usernameHelp: "", passwordHelp: "",
+    invalidUsername: "ادخل اسم المستخدم", invalidPassword: "ادخل كلمة السر",
     titleRequired: "يجب إدخال عنوان للتقرير",
   },
   en: {
@@ -68,14 +68,14 @@ const T = {
     required: "Required", minRowError: "Add at least one problem and action",
     welcome: "Welcome", role_owner: "Owner", role_user: "User",
     noReports: "No saved reports yet",
-    usernameHelp: "letters, numbers, _ only (3-20 chars)", passwordHelp: "at least 6 chars",
-    invalidUsername: "Invalid username", invalidPassword: "Password too short",
+    usernameHelp: "", passwordHelp: "",
+    invalidUsername: "Enter a username", invalidPassword: "Enter a password",
     titleRequired: "Report title is required",
   },
 } as const;
 
-const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
-const userToEmail = (u: string) => `${u.toLowerCase()}@app.local`;
+const sanitizeUsername = (u: string) => u.trim().toLowerCase();
+const userToEmail = (u: string) => `${sanitizeUsername(u)}@app.local`;
 
 function Index() {
   const [lang, setLang] = useState<Lang>("ar");
@@ -140,14 +140,15 @@ function AuthScreen({ lang, setLang, t }: { lang: Lang; setLang: (l: Lang) => vo
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!USERNAME_RE.test(u)) return toast.error(t.invalidUsername);
-    if (p.length < 6) return toast.error(t.invalidPassword);
+    const uname = sanitizeUsername(u);
+    if (!uname) return toast.error(t.invalidUsername);
+    if (!p) return toast.error(t.invalidPassword);
     setLoading(true);
-    const email = userToEmail(u);
+    const email = userToEmail(uname);
     if (mode === "signup") {
       const { error } = await supabase.auth.signUp({
         email, password: p,
-        options: { data: { username: u.toLowerCase() }, emailRedirectTo: window.location.origin },
+        options: { data: { username: uname }, emailRedirectTo: window.location.origin },
       });
       if (error) toast.error(error.message);
       else toast.success(lang === "ar" ? "تم إنشاء الحساب" : "Account created");
@@ -553,8 +554,9 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
 
   const addUser = async (e: FormEvent) => {
     e.preventDefault();
-    if (!USERNAME_RE.test(u)) return toast.error(t.invalidUsername);
-    if (p.length < 6) return toast.error(t.invalidPassword);
+    const uname = sanitizeUsername(u);
+    if (!uname) return toast.error(t.invalidUsername);
+    if (!p) return toast.error(t.invalidPassword);
     setLoading(true);
 
     // Save current owner session, create new user, then restore
@@ -562,8 +564,8 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
     const ownerRefresh = ownerSession.session?.refresh_token;
 
     const { error } = await supabase.auth.signUp({
-      email: userToEmail(u), password: p,
-      options: { data: { username: u.toLowerCase() } },
+      email: userToEmail(uname), password: p,
+      options: { data: { username: uname } },
     });
 
     if (ownerRefresh) {
