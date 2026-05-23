@@ -18,8 +18,9 @@ type Row = {
   productionSign: string;
 };
 
+let rowCounter = 0;
 const emptyRow = (): Row => ({
-  id: crypto.randomUUID(),
+  id: `row-${++rowCounter}`,
   problem: "",
   action: "",
   qualitySign: "",
