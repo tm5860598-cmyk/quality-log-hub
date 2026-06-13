@@ -34,7 +34,7 @@ function ChatThread() {
         .order("created_at", { ascending: true });
       if (cancelled) return;
       if (error) { toast.error(error.message); setInitial([]); return; }
-      setInitial((data ?? []).map((r) => r.message as UIMessage));
+      setInitial((data ?? []).map((r) => r.message as unknown as UIMessage));
     })();
     return () => { cancelled = true; };
   }, [threadId]);
