@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Languages, Plus, Save, Printer, FileDown, Trash2,
-  LogOut, Users, FileText, LogIn, UserPlus, FolderOpen,
+  LogOut, Users, FileText, LogIn, UserPlus, FolderOpen, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
@@ -323,6 +324,9 @@ function AppScreen({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="sm" className="bg-gradient-to-r from-primary to-accent text-primary-foreground">
+              <Link to="/chat"><Sparkles className="size-4" /> {lang === "ar" ? "المساعد الذكي" : "AI Chat"}</Link>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
               <Languages className="size-4" /> {t.lang}
             </Button>
