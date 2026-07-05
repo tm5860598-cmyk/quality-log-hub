@@ -739,7 +739,14 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
           );
           if (tile.href) {
             return (
-              <Link key={tile.key} to={tile.href} className="block h-full">{inner}</Link>
+              <Link
+                key={tile.key}
+                to="/chat"
+                search={tile.category ? { category: tile.category } : {}}
+                className="block h-full"
+              >
+                {inner}
+              </Link>
             );
           }
           return (
