@@ -1,0 +1,2 @@
+ALTER TABLE public.chat_threads ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'general';
+CREATE INDEX IF NOT EXISTS chat_threads_user_category_idx ON public.chat_threads(user_id, category, updated_at DESC);

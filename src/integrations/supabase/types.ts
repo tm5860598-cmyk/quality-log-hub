@@ -48,6 +48,7 @@ export type Database = {
       }
       chat_threads: {
         Row: {
+          category: string
           created_at: string
           id: string
           title: string
@@ -55,6 +56,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string
           created_at?: string
           id?: string
           title?: string
@@ -62,6 +64,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string
           created_at?: string
           id?: string
           title?: string
