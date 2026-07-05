@@ -215,7 +215,7 @@ function AppScreen({
   lang: Lang; setLang: (l: Lang) => void; t: typeof T["ar"]; dir: "ltr" | "rtl";
   username: string; role: "owner" | "user";
 }) {
-  const [tab, setTab] = useState<"editor" | "list" | "users">("editor");
+  const [tab, setTab] = useState<"hub" | "editor" | "list" | "users">("hub");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reportNumber, setReportNumber] = useState<number | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -338,6 +338,9 @@ function AppScreen({
 
         {/* Tabs */}
         <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+          <TabBtn active={tab === "hub"} onClick={() => setTab("hub")} icon={<Sparkles className="size-4" />}>
+            {lang === "ar" ? "الرئيسية" : "Home"}
+          </TabBtn>
           <TabBtn active={tab === "editor"} onClick={() => setTab("editor")} icon={<FileText className="size-4" />}>
             {editingId ? `${t.reportNo} ${reportNumber}` : t.newReport}
           </TabBtn>
@@ -356,6 +359,9 @@ function AppScreen({
           )}
         </div>
 
+        {tab === "hub" && (
+          <HubView lang={lang} onOpenReports={() => setTab("list")} onNewReport={() => { resetForm(); setTab("editor"); }} />
+        )}
         {tab === "editor" && (
           <EditorView
             t={t} lang={lang} dir={dir}
