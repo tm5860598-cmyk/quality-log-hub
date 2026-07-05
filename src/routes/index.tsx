@@ -641,6 +641,7 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
     emoji: string;
     onClick?: () => void;
     href?: string;
+    category?: string;
   }> = [
     {
       key: "reports",
