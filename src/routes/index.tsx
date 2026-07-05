@@ -656,7 +656,7 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
       desc: t("طرق تشغيل ووصفات العصائر بمعايير NFSA", "Juice recipes & NFSA-grade processes"),
       gradient: "from-orange-500 to-rose-500",
       emoji: "🥤",
-      href: "/chat?category=juice-production",
+      category: "juice-production", href: "/chat",
     },
     {
       key: "juice-quality",
@@ -664,7 +664,7 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
       desc: t("جميع اختبارات المعمل وصالة الإنتاج", "All lab & floor QC tests"),
       gradient: "from-rose-500 to-fuchsia-500",
       emoji: "🧪",
-      href: "/chat?category=juice-quality",
+      category: "juice-quality", href: "/chat",
     },
     {
       key: "dairy-production",
@@ -672,7 +672,7 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
       desc: t("تصنيع اللبن والزبادي والجبن والمعدات", "Milk, yogurt, cheese processes & equipment"),
       gradient: "from-sky-500 to-cyan-500",
       emoji: "🥛",
-      href: "/chat?category=dairy-production",
+      category: "dairy-production", href: "/chat",
     },
     {
       key: "dairy-quality",
@@ -680,7 +680,7 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
       desc: t("تحاليل الدهن والبروتين والميكروبيولوجي", "Fat, protein, micro & residue tests"),
       gradient: "from-cyan-500 to-teal-500",
       emoji: "🔬",
-      href: "/chat?category=dairy-quality",
+      category: "dairy-quality", href: "/chat",
     },
     {
       key: "bakery-production",
@@ -688,7 +688,7 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
       desc: t("وصفات المخبوزات وخطوات الإنتاج", "Baker's percentages & production steps"),
       gradient: "from-amber-500 to-orange-500",
       emoji: "🥐",
-      href: "/chat?category=bakery-production",
+      category: "bakery-production", href: "/chat",
     },
     {
       key: "bakery-quality",
@@ -696,7 +696,7 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
       desc: t("تحاليل الجلوتين والرطوبة وأجهزة المعمل", "Gluten, moisture, rheology tests & lab kit"),
       gradient: "from-yellow-500 to-amber-500",
       emoji: "🧫",
-      href: "/chat?category=bakery-quality",
+      category: "bakery-quality", href: "/chat",
     },
   ];
 
