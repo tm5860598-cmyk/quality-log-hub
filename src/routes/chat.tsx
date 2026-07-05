@@ -1,15 +1,30 @@
-import { createFileRoute, Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Plus, MessageSquare, Trash2, ArrowLeft, Menu, X } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 
-type Thread = { id: string; title: string; updated_at: string };
+type Thread = { id: string; title: string; updated_at: string; category: string };
+
+export const CATEGORIES: Record<string, { label: string; emoji: string }> = {
+  general: { label: "المساعد العام", emoji: "✨" },
+  "quality-reports": { label: "تقارير الجودة", emoji: "📋" },
+  "juice-production": { label: "إنتاج العصائر", emoji: "🥤" },
+  "juice-quality": { label: "جودة العصائر", emoji: "🧪" },
+  "dairy-production": { label: "إنتاج الألبان", emoji: "🥛" },
+  "dairy-quality": { label: "جودة الألبان", emoji: "🔬" },
+  "bakery-production": { label: "إنتاج البيكري", emoji: "🥐" },
+  "bakery-quality": { label: "جودة البيكري", emoji: "🧫" },
+};
+
+const searchSchema = z.object({ category: z.string().optional() });
 
 export const Route = createFileRoute("/chat")({
   component: ChatLayout,
+  validateSearch: (s) => searchSchema.parse(s),
   errorComponent: ({ error }) => (
     <div className="p-6 text-center text-sm text-destructive">{String(error?.message ?? error)}</div>
   ),
@@ -23,7 +38,10 @@ function ChatLayout() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { threadId?: string };
+  const search = useSearch({ from: "/chat" }) as { category?: string };
   const activeId = params.threadId;
+  const category = search.category && CATEGORIES[search.category] ? search.category : "general";
+  const cat = CATEGORIES[category];
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
@@ -41,24 +59,23 @@ function ChatLayout() {
     if (!session) return;
     const { data, error } = await supabase
       .from("chat_threads")
-      .select("id, title, updated_at")
+      .select("id, title, updated_at, category")
+      .eq("category", category)
       .order("updated_at", { ascending: false });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setThreads(data ?? []);
-  }, [session]);
+    if (error) { toast.error(error.message); return; }
+    setThreads((data ?? []) as Thread[]);
+  }, [session, category]);
 
   useEffect(() => { loadThreads(); }, [loadThreads, activeId]);
 
   const newChat = async () => {
     const { data, error } = await supabase
-      .from("chat_threads").insert({ user_id: session!.user.id, title: "محادثة جديدة" })
+      .from("chat_threads")
+      .insert({ user_id: session!.user.id, title: "محادثة جديدة", category } as never)
       .select("id").single();
     if (error || !data) { toast.error(error?.message ?? "Error"); return; }
     setOpen(false);
-    navigate({ to: "/chat/$threadId", params: { threadId: data.id } });
+    navigate({ to: "/chat/$threadId", params: { threadId: data.id }, search: { category } });
   };
 
   const deleteThread = async (id: string) => {
@@ -66,7 +83,7 @@ function ChatLayout() {
     if (error) { toast.error(error.message); return; }
     toast.success("تم الحذف");
     setThreads((t) => t.filter((x) => x.id !== id));
-    if (activeId === id) navigate({ to: "/chat" });
+    if (activeId === id) navigate({ to: "/chat", search: { category } });
   };
 
   if (!authReady) {
@@ -88,22 +105,28 @@ function ChatLayout() {
 
   const Sidebar = (
     <aside className="w-72 shrink-0 border-l bg-card flex flex-col h-full">
-      <div className="p-3 border-b flex items-center gap-2">
-        <Link to="/" className="inline-flex items-center justify-center rounded-md border w-9 h-9 hover:bg-accent" aria-label="Home">
-          <ArrowLeft className="size-4" />
-        </Link>
-        <Button onClick={newChat} className="flex-1 gap-2"><Plus className="size-4" /> محادثة جديدة</Button>
-        <button onClick={() => setOpen(false)} className="md:hidden inline-flex items-center justify-center rounded-md border w-9 h-9">
-          <X className="size-4" />
-        </button>
+      <div className="p-3 border-b">
+        <div className="flex items-center gap-2 mb-2">
+          <Link to="/" className="inline-flex items-center justify-center rounded-md border w-9 h-9 hover:bg-accent" aria-label="Home">
+            <ArrowLeft className="size-4" />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-muted-foreground">قسم</div>
+            <div className="font-semibold truncate">{cat.emoji} {cat.label}</div>
+          </div>
+          <button onClick={() => setOpen(false)} className="md:hidden inline-flex items-center justify-center rounded-md border w-9 h-9">
+            <X className="size-4" />
+          </button>
+        </div>
+        <Button onClick={newChat} className="w-full gap-2"><Plus className="size-4" /> محادثة جديدة</Button>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {threads.length === 0 && (
-          <p className="text-center text-xs text-muted-foreground p-4">لا توجد محادثات بعد</p>
+          <p className="text-center text-xs text-muted-foreground p-4">لا توجد محادثات في هذا القسم</p>
         )}
         {threads.map((t) => (
           <div key={t.id} className={`group flex items-center gap-1 rounded-md px-2 py-2 hover:bg-accent ${activeId === t.id ? "bg-accent" : ""}`}>
-            <Link to="/chat/$threadId" params={{ threadId: t.id }} onClick={() => setOpen(false)} className="flex-1 flex items-center gap-2 min-w-0 text-sm">
+            <Link to="/chat/$threadId" params={{ threadId: t.id }} search={{ category }} onClick={() => setOpen(false)} className="flex-1 flex items-center gap-2 min-w-0 text-sm">
               <MessageSquare className="size-4 shrink-0 text-muted-foreground" />
               <span className="truncate">{t.title || "محادثة"}</span>
             </Link>
@@ -130,7 +153,7 @@ function ChatLayout() {
           <button onClick={() => setOpen(true)} className="inline-flex items-center justify-center rounded-md border w-9 h-9">
             <Menu className="size-4" />
           </button>
-          <h1 className="font-semibold">المساعد الذكي</h1>
+          <h1 className="font-semibold">{cat.emoji} {cat.label}</h1>
         </header>
         <Outlet />
       </main>

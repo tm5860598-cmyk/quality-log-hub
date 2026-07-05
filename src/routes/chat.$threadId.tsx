@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$threadId")({
   component: ChatThread,
+  validateSearch: (s: Record<string, unknown>) => ({ category: typeof s.category === "string" ? s.category : undefined }),
 });
 
 function getText(m: UIMessage) {

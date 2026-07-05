@@ -215,7 +215,7 @@ function AppScreen({
   lang: Lang; setLang: (l: Lang) => void; t: typeof T["ar"]; dir: "ltr" | "rtl";
   username: string; role: "owner" | "user";
 }) {
-  const [tab, setTab] = useState<"editor" | "list" | "users">("editor");
+  const [tab, setTab] = useState<"hub" | "editor" | "list" | "users">("hub");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reportNumber, setReportNumber] = useState<number | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -338,6 +338,9 @@ function AppScreen({
 
         {/* Tabs */}
         <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+          <TabBtn active={tab === "hub"} onClick={() => setTab("hub")} icon={<Sparkles className="size-4" />}>
+            {lang === "ar" ? "الرئيسية" : "Home"}
+          </TabBtn>
           <TabBtn active={tab === "editor"} onClick={() => setTab("editor")} icon={<FileText className="size-4" />}>
             {editingId ? `${t.reportNo} ${reportNumber}` : t.newReport}
           </TabBtn>
@@ -356,6 +359,9 @@ function AppScreen({
           )}
         </div>
 
+        {tab === "hub" && (
+          <HubView lang={lang} onOpenReports={() => setTab("list")} onNewReport={() => { resetForm(); setTab("editor"); }} />
+        )}
         {tab === "editor" && (
           <EditorView
             t={t} lang={lang} dir={dir}
@@ -621,6 +627,140 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void }) {
+  const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
+  const tiles: Array<{
+    key: string;
+    title: string;
+    desc: string;
+    gradient: string;
+    emoji: string;
+    onClick?: () => void;
+    href?: string;
+    category?: string;
+  }> = [
+    {
+      key: "reports",
+      title: t("تقارير الجودة", "Quality Reports"),
+      desc: t("إنشاء وحفظ تقارير المشاكل والإجراءات", "Create and save inspection reports"),
+      gradient: "from-indigo-500 to-sky-500",
+      emoji: "📋",
+      onClick: onNewReport,
+    },
+    {
+      key: "juice-production",
+      title: t("إنتاج العصائر", "Juice Production"),
+      desc: t("طرق تشغيل ووصفات العصائر بمعايير NFSA", "Juice recipes & NFSA-grade processes"),
+      gradient: "from-orange-500 to-rose-500",
+      emoji: "🥤",
+      category: "juice-production", href: "/chat",
+    },
+    {
+      key: "juice-quality",
+      title: t("جودة العصائر", "Juice Quality"),
+      desc: t("جميع اختبارات المعمل وصالة الإنتاج", "All lab & floor QC tests"),
+      gradient: "from-rose-500 to-fuchsia-500",
+      emoji: "🧪",
+      category: "juice-quality", href: "/chat",
+    },
+    {
+      key: "dairy-production",
+      title: t("إنتاج الألبان", "Dairy Production"),
+      desc: t("تصنيع اللبن والزبادي والجبن والمعدات", "Milk, yogurt, cheese processes & equipment"),
+      gradient: "from-sky-500 to-cyan-500",
+      emoji: "🥛",
+      category: "dairy-production", href: "/chat",
+    },
+    {
+      key: "dairy-quality",
+      title: t("جودة الألبان", "Dairy Quality"),
+      desc: t("تحاليل الدهن والبروتين والميكروبيولوجي", "Fat, protein, micro & residue tests"),
+      gradient: "from-cyan-500 to-teal-500",
+      emoji: "🔬",
+      category: "dairy-quality", href: "/chat",
+    },
+    {
+      key: "bakery-production",
+      title: t("إنتاج البيكري", "Bakery Production"),
+      desc: t("وصفات المخبوزات وخطوات الإنتاج", "Baker's percentages & production steps"),
+      gradient: "from-amber-500 to-orange-500",
+      emoji: "🥐",
+      category: "bakery-production", href: "/chat",
+    },
+    {
+      key: "bakery-quality",
+      title: t("جودة البيكري", "Bakery Quality"),
+      desc: t("تحاليل الجلوتين والرطوبة وأجهزة المعمل", "Gluten, moisture, rheology tests & lab kit"),
+      gradient: "from-yellow-500 to-amber-500",
+      emoji: "🧫",
+      category: "bakery-quality", href: "/chat",
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-6 shadow-xl">
+        <h2 className="text-xl font-bold text-slate-800 mb-1">
+          {t("مركز الجودة والإنتاج", "Quality & Production Hub")}
+        </h2>
+        <p className="text-sm text-slate-600">
+          {t(
+            "اختر أحد الأقسام لبدء محادثة متخصصة مع المساعد الذكي، أو افتح تقارير الجودة.",
+            "Pick a category to chat with a specialist assistant, or open Quality Reports.",
+          )}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {tiles.map((tile) => {
+          const inner = (
+            <div className={`group h-full rounded-2xl bg-gradient-to-br ${tile.gradient} p-[1.5px] shadow-lg hover:shadow-2xl transition`}>
+              <div className="h-full rounded-2xl bg-white/95 backdrop-blur p-5 flex flex-col gap-3">
+                <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${tile.gradient} text-white text-3xl shadow-md group-hover:scale-105 transition`}>
+                  <span>{tile.emoji}</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-lg leading-tight">{tile.title}</h3>
+                  <p className="text-sm text-slate-600 mt-1">{tile.desc}</p>
+                </div>
+                <div className="mt-auto pt-2">
+                  <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${tile.gradient} bg-clip-text text-transparent`}>
+                    {tile.key === "reports"
+                      ? t("فتح التقارير", "Open reports")
+                      : t("بدء محادثة", "Start chat")}
+                    <span aria-hidden>→</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+          if (tile.href) {
+            return (
+              <Link
+                key={tile.key}
+                to="/chat"
+                search={tile.category ? { category: tile.category } : {}}
+                className="block h-full"
+              >
+                {inner}
+              </Link>
+            );
+          }
+          return (
+            <button key={tile.key} onClick={tile.onClick} className="text-start h-full">{inner}</button>
+          );
+        })}
+      </div>
+      {onOpenReports && (
+        <div className="text-center">
+          <button onClick={onOpenReports} className="text-sm text-indigo-700 hover:underline">
+            {t("عرض التقارير المحفوظة", "View saved reports")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
