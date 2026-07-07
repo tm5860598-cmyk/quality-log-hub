@@ -36,7 +36,7 @@ const emptyRow = (): Row => ({
 const T = {
   ar: {
     title: "تقارير المشاكل والإجراءات",
-    appName: "نظام التقارير",
+    appName: "My Favourite Project",
     date: "التاريخ", reportTitle: "عنوان التقرير", reportDetails: "تفاصيل التقرير",
     add: "إضافة صف", save: "حفظ", print: "طباعة", pdf: "تصدير PDF", lang: "English",
     num: "#", problem: "المشكلة", action: "الإجراء المتخذ",
@@ -55,7 +55,7 @@ const T = {
     titleRequired: "يجب إدخال عنوان للتقرير",
   },
   en: {
-    title: "Problems & Actions Report", appName: "Reports System",
+    title: "Problems & Actions Report", appName: "My Favourite Project",
     date: "Date", reportTitle: "Report Title", reportDetails: "Report Details",
     add: "Add Row", save: "Save", print: "Print", pdf: "Export PDF", lang: "عربي",
     num: "#", problem: "Problem", action: "Action Taken",
@@ -360,7 +360,7 @@ function AppScreen({
         </div>
 
         {tab === "hub" && (
-          <HubView lang={lang} onOpenReports={() => setTab("list")} onNewReport={() => { resetForm(); setTab("editor"); }} />
+          <HubView lang={lang} username={username} onOpenReports={() => setTab("list")} onNewReport={() => { resetForm(); setTab("editor"); }} />
         )}
         {tab === "editor" && (
           <EditorView
@@ -631,7 +631,7 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
   );
 }
 
-function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void }) {
+function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const tiles: Array<{
     key: string;
@@ -703,16 +703,27 @@ function HubView({ lang, onOpenReports, onNewReport }: { lang: Lang; onOpenRepor
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-slate-800 mb-1">
-          {t("مركز الجودة والإنتاج", "Quality & Production Hub")}
-        </h2>
-        <p className="text-sm text-slate-600">
-          {t(
-            "اختر أحد الأقسام لبدء محادثة متخصصة مع المساعد الذكي، أو افتح تقارير الجودة.",
-            "Pick a category to chat with a specialist assistant, or open Quality Reports.",
-          )}
-        </p>
+      <div className="rounded-3xl overflow-hidden shadow-2xl relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-sky-600 to-emerald-500 opacity-95" />
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 1px, transparent 1px), radial-gradient(circle at 80% 60%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+        <div className="relative p-8 text-white">
+          <div className="text-xs uppercase tracking-widest opacity-80">My Favourite Project</div>
+          <h2 className="text-2xl md:text-3xl font-extrabold mt-1">
+            {t(`أهلاً بك يا مهندس ${username || "طارق"} 👋`, `Welcome, Engineer ${username || "Tarek"} 👋`)}
+          </h2>
+          <p className="text-sm md:text-base opacity-90 mt-2 max-w-2xl">
+            {t(
+              "منصتك الشخصية للإنتاج والجودة — اختر أي قسم لبدء بحث متخصص. كل منتج تبحث عنه يُحفظ تلقائيًا في قاعدة بياناتك ويحمل أيقونة مميزة، مع مصادر صور جاهزة وإمكانية الطباعة.",
+              "Your personal hub for production & QC. Every product you search is auto-saved with a unique icon, image sources, and print support.",
+            )}
+          </p>
+          <div className="flex flex-wrap gap-2 mt-4 text-xs">
+            <span className="rounded-full bg-white/20 px-3 py-1">💾 حفظ تلقائي</span>
+            <span className="rounded-full bg-white/20 px-3 py-1">🖨️ طباعة كل قسم</span>
+            <span className="rounded-full bg-white/20 px-3 py-1">📸 مصادر صور</span>
+            <span className="rounded-full bg-white/20 px-3 py-1">🏷️ أيقونة لكل منتج</span>
+          </div>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {tiles.map((tile) => {
