@@ -142,3 +142,9 @@
     color: var(--color-foreground);
   }
 }
+
+@media print {
+  aside, header { display: none !important; }
+  .prose { color: black !important; }
+  body { background: white !important; }
+}
