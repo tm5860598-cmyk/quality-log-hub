@@ -36,7 +36,7 @@ const emptyRow = (): Row => ({
 const T = {
   ar: {
     title: "تقارير المشاكل والإجراءات",
-    appName: "نظام التقارير",
+    appName: "My Favourite Project",
     date: "التاريخ", reportTitle: "عنوان التقرير", reportDetails: "تفاصيل التقرير",
     add: "إضافة صف", save: "حفظ", print: "طباعة", pdf: "تصدير PDF", lang: "English",
     num: "#", problem: "المشكلة", action: "الإجراء المتخذ",
@@ -55,7 +55,7 @@ const T = {
     titleRequired: "يجب إدخال عنوان للتقرير",
   },
   en: {
-    title: "Problems & Actions Report", appName: "Reports System",
+    title: "Problems & Actions Report", appName: "My Favourite Project",
     date: "Date", reportTitle: "Report Title", reportDetails: "Report Details",
     add: "Add Row", save: "Save", print: "Print", pdf: "Export PDF", lang: "عربي",
     num: "#", problem: "Problem", action: "Action Taken",
