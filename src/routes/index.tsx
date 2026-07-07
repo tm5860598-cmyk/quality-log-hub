@@ -360,7 +360,7 @@ function AppScreen({
         </div>
 
         {tab === "hub" && (
-          <HubView lang={lang} onOpenReports={() => setTab("list")} onNewReport={() => { resetForm(); setTab("editor"); }} />
+          <HubView lang={lang} username={username} onOpenReports={() => setTab("list")} onNewReport={() => { resetForm(); setTab("editor"); }} />
         )}
         {tab === "editor" && (
           <EditorView
