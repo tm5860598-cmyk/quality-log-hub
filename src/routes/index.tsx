@@ -767,16 +767,7 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
             </div>
           );
           if (tile.category) {
-            return (
-              <Link
-                key={tile.key}
-                to="/products/$category"
-                params={{ category: tile.category }}
-                className="block h-full text-start"
-              >
-                {inner}
-              </Link>
-            );
+            return <div key={tile.key} className="h-full">{inner}</div>;
           }
           return (
             <button key={tile.key} onClick={tile.onClick} className="text-start h-full">{inner}</button>
