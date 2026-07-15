@@ -70,8 +70,8 @@ function ProductsPage() {
     if (error) return toast.error(error.message);
     const rows = (data ?? []).map((p) => ({
       ...(p as unknown as Product),
-      ingredients: Array.isArray((p as { ingredients?: unknown }).ingredients)
-        ? ((p as { ingredients: Ingredient[] }).ingredients)
+      ingredients: Array.isArray((p as unknown as { ingredients?: unknown }).ingredients)
+        ? ((p as unknown as { ingredients: Ingredient[] }).ingredients)
         : [],
     })) as Product[];
     setProducts(rows);
