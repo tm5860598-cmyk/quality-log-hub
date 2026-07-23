@@ -78,39 +78,57 @@ export type Database = {
           base_quantity: number
           base_unit: string
           category: string
+          code: string | null
           created_at: string
           created_by: string
           description: string | null
           id: string
+          image_url: string | null
           ingredients: Json
           name: string
           notes: string | null
+          package_size: string | null
+          product_type: string | null
+          recipe: Json
+          spec: Json
           updated_at: string
         }
         Insert: {
           base_quantity?: number
           base_unit?: string
           category: string
+          code?: string | null
           created_at?: string
           created_by: string
           description?: string | null
           id?: string
+          image_url?: string | null
           ingredients?: Json
           name: string
           notes?: string | null
+          package_size?: string | null
+          product_type?: string | null
+          recipe?: Json
+          spec?: Json
           updated_at?: string
         }
         Update: {
           base_quantity?: number
           base_unit?: string
           category?: string
+          code?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           ingredients?: Json
           name?: string
           notes?: string | null
+          package_size?: string | null
+          product_type?: string | null
+          recipe?: Json
+          spec?: Json
           updated_at?: string
         }
         Relationships: []
@@ -195,6 +213,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_any_role: {
+        Args: { _roles: string[]; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -204,7 +226,18 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "user"
+      app_role:
+        | "owner"
+        | "user"
+        | "admin"
+        | "qa_manager"
+        | "production_manager"
+        | "qa_engineer"
+        | "production_engineer"
+        | "laboratory"
+        | "maintenance"
+        | "warehouse"
+        | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -332,7 +365,19 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "user"],
+      app_role: [
+        "owner",
+        "user",
+        "admin",
+        "qa_manager",
+        "production_manager",
+        "qa_engineer",
+        "production_engineer",
+        "laboratory",
+        "maintenance",
+        "warehouse",
+        "viewer",
+      ],
     },
   },
 } as const
