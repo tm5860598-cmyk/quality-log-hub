@@ -545,9 +545,29 @@ function ReportsList({
   );
 }
 
+const ROLE_OPTIONS = [
+  { value: "admin", label_ar: "مدير", label_en: "Admin" },
+  { value: "qa_manager", label_ar: "مدير جودة", label_en: "QA Manager" },
+  { value: "production_manager", label_ar: "مدير إنتاج", label_en: "Production Manager" },
+  { value: "qa_engineer", label_ar: "مهندس جودة", label_en: "QA Engineer" },
+  { value: "production_engineer", label_ar: "مهندس إنتاج", label_en: "Production Engineer" },
+  { value: "laboratory", label_ar: "معمل", label_en: "Laboratory" },
+  { value: "maintenance", label_ar: "صيانة", label_en: "Maintenance" },
+  { value: "warehouse", label_ar: "مخازن", label_en: "Warehouse" },
+  { value: "viewer", label_ar: "مشاهد", label_en: "Viewer" },
+  { value: "user", label_ar: "مستخدم", label_en: "User" },
+];
+
+function roleLabel(role: string, lang: Lang): string {
+  if (role === "owner") return lang === "ar" ? "المالك" : "Owner";
+  const r = ROLE_OPTIONS.find((r) => r.value === role);
+  return r ? (lang === "ar" ? r.label_ar : r.label_en) : role;
+}
+
 function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
   const [users, setUsers] = useState<{ id: string; username: string; role: string }[]>([]);
   const [u, setU] = useState(""); const [p, setP] = useState("");
+  const [newRole, setNewRole] = useState<string>("user");
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
@@ -555,7 +575,7 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
       supabase.from("profiles").select("id, username"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
-    const roleMap = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
+    const roleMap = new Map((roles ?? []).map((r) => [r.user_id, r.role as string]));
     setUsers((profiles ?? []).map((p) => ({
       id: p.id, username: p.username, role: roleMap.get(p.id) ?? "user",
     })));
@@ -569,11 +589,10 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
     if (!p) return toast.error(t.invalidPassword);
     setLoading(true);
 
-    // Save current owner session, create new user, then restore
     const { data: ownerSession } = await supabase.auth.getSession();
     const ownerRefresh = ownerSession.session?.refresh_token;
 
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: userToEmail(uname), password: p,
       options: { data: { username: uname } },
     });
@@ -582,9 +601,33 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
       await supabase.auth.refreshSession({ refresh_token: ownerRefresh });
     }
 
-    if (error) toast.error(error.message);
-    else { toast.success(t.userAdded); setU(""); setP(""); load(); }
+    if (error) { toast.error(error.message); setLoading(false); return; }
+
+    // Set the requested role (trigger inserts 'user' by default)
+    const newUserId = signUpData.user?.id;
+    if (newUserId && newRole !== "user") {
+      // Type cast to accommodate enum
+      const { error: roleErr } = await supabase
+        .from("user_roles")
+        .update({ role: newRole as never })
+        .eq("user_id", newUserId);
+      if (roleErr) toast.error(roleErr.message);
+    }
+
+    toast.success(t.userAdded);
+    setU(""); setP(""); setNewRole("user");
+    load();
     setLoading(false);
+  };
+
+  const changeRole = async (userId: string, role: string) => {
+    const { error } = await supabase
+      .from("user_roles")
+      .update({ role: role as never })
+      .eq("user_id", userId);
+    if (error) return toast.error(error.message);
+    toast.success(lang === "ar" ? "تم تحديث الدور" : "Role updated");
+    load();
   };
 
   return (
@@ -597,12 +640,19 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
           <div>
             <Label className="mb-1 block">{t.username}</Label>
             <Input value={u} onChange={(e) => setU(e.target.value)} required />
-            <p className="text-xs text-slate-500 mt-1">{t.usernameHelp}</p>
           </div>
           <div>
             <Label className="mb-1 block">{t.password}</Label>
             <Input type="password" value={p} onChange={(e) => setP(e.target.value)} required />
-            <p className="text-xs text-slate-500 mt-1">{t.passwordHelp}</p>
+          </div>
+          <div>
+            <Label className="mb-1 block">{lang === "ar" ? "الدور" : "Role"}</Label>
+            <select value={newRole} onChange={(e) => setNewRole(e.target.value)}
+              className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm">
+              {ROLE_OPTIONS.map((r) => (
+                <option key={r.value} value={r.value}>{lang === "ar" ? r.label_ar : r.label_en}</option>
+              ))}
+            </select>
           </div>
           <Button type="submit" disabled={loading}
             className="w-full bg-gradient-to-r from-indigo-600 to-sky-600 text-white">
@@ -616,13 +666,23 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
         </h2>
         <div className="space-y-2">
           {users.map((usr) => (
-            <div key={usr.id} className="flex items-center justify-between p-3 rounded-lg bg-indigo-50/60 border border-indigo-100">
-              <span className="font-semibold text-slate-800">{usr.username}</span>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                usr.role === "owner" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"
-              }`}>
-                {usr.role === "owner" ? t.role_owner : t.role_user}
-              </span>
+            <div key={usr.id} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-indigo-50/60 border border-indigo-100">
+              <span className="font-semibold text-slate-800 truncate">{usr.username}</span>
+              {usr.role === "owner" ? (
+                <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 shrink-0">
+                  {roleLabel("owner", lang)}
+                </span>
+              ) : (
+                <select
+                  value={usr.role}
+                  onChange={(e) => changeRole(usr.id, e.target.value)}
+                  className="text-xs h-8 rounded-md border border-slate-200 bg-white px-2 shrink-0"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>{lang === "ar" ? r.label_ar : r.label_en}</option>
+                  ))}
+                </select>
+              )}
             </div>
           ))}
         </div>
