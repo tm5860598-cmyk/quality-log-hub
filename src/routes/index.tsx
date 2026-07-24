@@ -88,14 +88,26 @@ function Index() {
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
+    let mounted = true;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (!mounted) return;
+      // Ignore transient null sessions from TOKEN_REFRESHED/INITIAL_SESSION
+      // that would otherwise kick a signed-in user back to the login screen.
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        return;
+      }
+      if (s) setSession(s);
     });
     supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
       setSession(data.session);
       setAuthReady(true);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
