@@ -724,6 +724,14 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
       onClick: onNewReport,
     },
     {
+      key: "ncr",
+      title: t("عدم المطابقة NCR / CAPA", "NCR / CAPA"),
+      desc: t("تسجيل ومتابعة حالات عدم المطابقة والإجراءات التصحيحية", "Log & track non-conformances and corrective actions"),
+      gradient: "from-rose-500 to-orange-500",
+      emoji: "⚠️",
+      href: "/ncr",
+    },
+    {
       key: "juice-production",
       title: t("إنتاج العصائر", "Juice Production"),
       desc: t("طرق تشغيل ووصفات العصائر بمعايير NFSA", "Juice recipes & NFSA-grade processes"),
