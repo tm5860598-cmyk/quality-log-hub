@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      capa_actions: {
+        Row: {
+          action_type: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string | null
+          effectiveness: string | null
+          id: string
+          ncr_id: string
+          responsible: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          action_type?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          due_date?: string | null
+          effectiveness?: string | null
+          id?: string
+          ncr_id: string
+          responsible?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          effectiveness?: string | null
+          id?: string
+          ncr_id?: string
+          responsible?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capa_actions_ncr_id_fkey"
+            columns: ["ncr_id"]
+            isOneToOne: false
+            referencedRelation: "ncr_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           created_at: string
@@ -72,6 +125,80 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ncr_reports: {
+        Row: {
+          assigned_to: string | null
+          batch_number: string | null
+          category: string | null
+          closed_at: string | null
+          created_at: string
+          description: string
+          id: string
+          immediate_action: string | null
+          ncr_number: number
+          product_id: string | null
+          product_name: string | null
+          reported_at: string
+          reported_by: string
+          root_cause: string | null
+          severity: string
+          source: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          batch_number?: string | null
+          category?: string | null
+          closed_at?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          immediate_action?: string | null
+          ncr_number?: number
+          product_id?: string | null
+          product_name?: string | null
+          reported_at?: string
+          reported_by: string
+          root_cause?: string | null
+          severity?: string
+          source?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          batch_number?: string | null
+          category?: string | null
+          closed_at?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          immediate_action?: string | null
+          ncr_number?: number
+          product_id?: string | null
+          product_name?: string | null
+          reported_at?: string
+          reported_by?: string
+          root_cause?: string | null
+          severity?: string
+          source?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncr_reports_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
