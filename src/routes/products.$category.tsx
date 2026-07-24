@@ -890,3 +890,45 @@ function Field({ label, children, className }: { label: string; children: React.
     </div>
   );
 }
+
+function ImageUploadField({ value, onChange, userId }: { value: string; onChange: (v: string) => void; userId: string }) {
+  const [uploading, setUploading] = useState(false);
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) return toast.error("الحد الأقصى 5MB");
+    setUploading(true);
+    try {
+      const ref = await uploadProductImage(f, userId);
+      onChange(ref);
+      toast.success("تم رفع الصورة");
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {value ? (
+          <ProductImage src={value} alt="preview" className="w-14 h-14 rounded-md object-cover border"
+            fallbackClassName="w-14 h-14 rounded-md bg-slate-100 grid place-items-center border" />
+        ) : (
+          <div className="w-14 h-14 rounded-md bg-slate-100 grid place-items-center border">
+            <ImageIcon className="size-5 text-slate-400" />
+          </div>
+        )}
+        <label className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+          <Upload className="size-4" /> {uploading ? "جارٍ الرفع..." : "رفع صورة"}
+          <input type="file" accept="image/*" onChange={onFile} className="hidden" disabled={uploading} />
+        </label>
+        {value && (
+          <button type="button" onClick={() => onChange("")} className="text-xs text-rose-600 hover:underline">إزالة</button>
+        )}
+      </div>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط https://..." />
+    </div>
+  );
+}
