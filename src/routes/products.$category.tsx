@@ -9,8 +9,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   ArrowRight, Plus, Search, Save, Trash2, Printer, Calculator, Package, X, Pencil,
-  Info, FlaskConical, ListOrdered, ImageIcon, ChevronUp, ChevronDown,
+  Info, FlaskConical, ListOrdered, ImageIcon, ChevronUp, ChevronDown, QrCode, FileText, Upload,
 } from "lucide-react";
+import { ProductImage } from "@/components/ProductImage";
+import { QrLabelDialog } from "@/components/QrLabelDialog";
+import { SopDialog } from "@/components/SopDialog";
+import { uploadProductImage } from "@/lib/product-media";
 
 // ---------- Types ----------
 type Ingredient = {
@@ -243,13 +247,12 @@ function ProductsPage() {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="w-10 h-10 rounded-md object-cover shrink-0 border" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-md bg-indigo-50 grid place-items-center shrink-0">
-                        <Package className="size-4 text-indigo-600" />
-                      </div>
-                    )}
+                    <ProductImage
+                      src={p.image_url}
+                      alt={p.name}
+                      className="w-10 h-10 rounded-md object-cover shrink-0 border"
+                      fallbackClassName="w-10 h-10 rounded-md bg-indigo-50 grid place-items-center shrink-0 border"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-slate-800 truncate">{p.name}</div>
                       <div className="text-xs text-slate-500 truncate">
@@ -306,6 +309,9 @@ function ProductDetail({
 }) {
   const [qty, setQty] = useState<number>(product.base_quantity);
   const [view, setView] = useState<"calc" | "spec" | "recipe">("calc");
+  const [showQr, setShowQr] = useState(false);
+  const [showSop, setShowSop] = useState(false);
+  const [sopKind, setSopKind] = useState<"sop" | "bmr">("sop");
   useEffect(() => { setQty(product.base_quantity); setView("calc"); }, [product.id, product.base_quantity]);
 
   const factor = product.base_quantity > 0 ? qty / product.base_quantity : 0;
@@ -315,9 +321,12 @@ function ProductDetail({
     <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-5 md:p-6 shadow-lg space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div className="flex gap-3 min-w-0">
-          {product.image_url && (
-            <img src={product.image_url} alt={product.name} className="w-20 h-20 rounded-xl object-cover border shrink-0" />
-          )}
+          <ProductImage
+            src={product.image_url}
+            alt={product.name}
+            className="w-20 h-20 rounded-xl object-cover border shrink-0"
+            fallbackClassName="w-20 h-20 rounded-xl bg-indigo-50 grid place-items-center border shrink-0"
+          />
           <div className="min-w-0">
             <h2 className="text-2xl font-extrabold text-slate-800 truncate">{product.name}</h2>
             <div className="flex flex-wrap gap-2 mt-1 text-xs">
@@ -332,6 +341,15 @@ function ProductDetail({
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="size-4" /> طباعة
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowQr(true)}>
+            <QrCode className="size-4" /> QR
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { setSopKind("sop"); setShowSop(true); }}>
+            <FileText className="size-4" /> SOP
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { setSopKind("bmr"); setShowSop(true); }}>
+            <FileText className="size-4" /> BMR
+          </Button>
           {canEdit && (
             <Button variant="outline" size="sm" onClick={onEdit}>
               <Pencil className="size-4" /> تعديل
@@ -344,6 +362,21 @@ function ProductDetail({
           )}
         </div>
       </div>
+
+      <QrLabelDialog
+        open={showQr}
+        onClose={() => setShowQr(false)}
+        title={product.name}
+        subtitle={[product.code, product.product_type, product.package_size].filter(Boolean).join(" · ")}
+        payload={JSON.stringify({ id: product.id, code: product.code, name: product.name, type: product.product_type, size: product.package_size })}
+      />
+      <SopDialog
+        open={showSop}
+        onClose={() => setShowSop(false)}
+        kind={sopKind}
+        product={product}
+        qty={qty}
+      />
 
       <div className="flex flex-wrap gap-1 print:hidden">
         <ViewTab active={view === "calc"} onClick={() => setView("calc")} icon={<Calculator className="size-4" />}>الخامات والحاسبة</ViewTab>
@@ -678,11 +711,8 @@ function ProductForm({
               <Field label="حجم العبوة">
                 <Input value={packageSize} onChange={(e) => setPackageSize(e.target.value)} maxLength={50} placeholder="مثال: 250 مل" />
               </Field>
-              <Field label="رابط الصورة">
-                <div className="flex gap-2">
-                  <ImageIcon className="size-4 text-slate-400 mt-2 shrink-0" />
-                  <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
-                </div>
+              <Field label="صورة المنتج">
+                <ImageUploadField value={imageUrl} onChange={setImageUrl} userId={userId} />
               </Field>
               <Field label="كمية الأساس *">
                 <div className="flex gap-2">
@@ -857,6 +887,48 @@ function Field({ label, children, className }: { label: string; children: React.
     <div className={className}>
       <Label className="mb-1 block text-xs text-slate-600">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function ImageUploadField({ value, onChange, userId }: { value: string; onChange: (v: string) => void; userId: string }) {
+  const [uploading, setUploading] = useState(false);
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) return toast.error("الحد الأقصى 5MB");
+    setUploading(true);
+    try {
+      const ref = await uploadProductImage(f, userId);
+      onChange(ref);
+      toast.success("تم رفع الصورة");
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {value ? (
+          <ProductImage src={value} alt="preview" className="w-14 h-14 rounded-md object-cover border"
+            fallbackClassName="w-14 h-14 rounded-md bg-slate-100 grid place-items-center border" />
+        ) : (
+          <div className="w-14 h-14 rounded-md bg-slate-100 grid place-items-center border">
+            <ImageIcon className="size-5 text-slate-400" />
+          </div>
+        )}
+        <label className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+          <Upload className="size-4" /> {uploading ? "جارٍ الرفع..." : "رفع صورة"}
+          <input type="file" accept="image/*" onChange={onFile} className="hidden" disabled={uploading} />
+        </label>
+        {value && (
+          <button type="button" onClick={() => onChange("")} className="text-xs text-rose-600 hover:underline">إزالة</button>
+        )}
+      </div>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط https://..." />
     </div>
   );
 }

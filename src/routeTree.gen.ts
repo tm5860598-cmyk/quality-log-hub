@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as NcrRouteImport } from './routes/ncr'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
@@ -16,6 +17,11 @@ import { Route as ProductsCategoryRouteImport } from './routes/products.$categor
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
+const NcrRoute = NcrRouteImport.update({
+  id: '/ncr',
+  path: '/ncr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -50,6 +56,7 @@ const ApiChatRoute = ApiChatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/ncr': typeof NcrRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/products/$category': typeof ProductsCategoryRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ncr': typeof NcrRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/products/$category': typeof ProductsCategoryRoute
@@ -66,6 +74,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/ncr': typeof NcrRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/products/$category': typeof ProductsCategoryRoute
@@ -76,16 +85,24 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chat'
+    | '/ncr'
     | '/api/chat'
     | '/chat/$threadId'
     | '/products/$category'
     | '/chat/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/chat/$threadId' | '/products/$category' | '/chat'
+  to:
+    | '/'
+    | '/ncr'
+    | '/api/chat'
+    | '/chat/$threadId'
+    | '/products/$category'
+    | '/chat'
   id:
     | '__root__'
     | '/'
     | '/chat'
+    | '/ncr'
     | '/api/chat'
     | '/chat/$threadId'
     | '/products/$category'
@@ -95,12 +112,20 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRouteWithChildren
+  NcrRoute: typeof NcrRoute
   ApiChatRoute: typeof ApiChatRoute
   ProductsCategoryRoute: typeof ProductsCategoryRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/ncr': {
+      id: '/ncr'
+      path: '/ncr'
+      fullPath: '/ncr'
+      preLoaderRoute: typeof NcrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -161,6 +186,7 @@ const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRouteWithChildren,
+  NcrRoute: NcrRoute,
   ApiChatRoute: ApiChatRoute,
   ProductsCategoryRoute: ProductsCategoryRoute,
 }

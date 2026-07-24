@@ -1,81 +1,63 @@
-## المرحلة 1 — الأساس
+## المرحلة 2 — رفع الصور + QR + SOP + NCR
 
-### 1. توسيع جدول `products`
+### 1. رفع صور المنتجات (Supabase Storage)
 
-أضيف أعمدة جديدة على الجدول الموجود بدون كسر البيانات الحالية:
+- إنشاء bucket `product-images` عام (public).
+- سياسات RLS: قراءة للجميع، رفع/حذف للأدوار الإدارية (owner, admin, qa_manager, production_manager).
+- في نموذج المنتج (تبويبة "الأساسي") — بدل حقل `image_url` النصي: زر رفع صورة → يحفظ الملف في bucket ويخزن الرابط العام في `products.image_url`.
+- عرض الصورة في Card المنتج وفي Modal التفاصيل.
 
-- `code` (كود المنتج، فريد لكل قسم)
-- `product_type` (نوع)
-- `package_size` (حجم العبوة)
-- `image_url` (صورة)
-- `spec` JSONB يحتوي: `ph`, `brix`, `viscosity`, `net_weight`, `shelf_life`, `storage`, `allergens[]`, `standard_spec`
-- `recipe` JSONB (وصفة التصنيع، تفصيل تحت)
+### 2. QR Code لكل منتج
 
-الحقول القديمة (`ingredients`, `base_quantity`, `notes`) تبقى كما هي.
+- حزمة `qrcode` (توليد QR بدون uploads إضافية).
+- في Modal تفاصيل المنتج: زر "عرض QR" يعرض QR يحتوي JSON مختصر:
+  ```
+  { code, name, category, size, batch: "-" }
+  ```
+- زر "طباعة ملصق" يطبع بطاقة A6 فيها: الاسم، الكود، النوع، الحجم، QR — للصق على العبوة.
 
-### 2. تركيبة الخامات الجديدة
+### 3. توليد SOP/BMR (PDF)
 
-كل عنصر في `ingredients[]` هيبقى:
+- زر "توليد SOP" داخل صفحة المنتج.
+- يبني ملف HTML منسق يحتوي:
+  - Header: اسم المنتج، الكود، النوع، الحجم، الصورة، رقم الإصدار، التاريخ.
+  - قسم "المواصفات القياسية" (pH, Brix, لزوجة، وزن، صلاحية، تخزين، حساسية).
+  - قسم "الخامات" (جدول: الاسم، الكود، المورد، النسبة، الحدود، الكمية).
+  - قسم "خطوات التصنيع" (جدول من `recipe.steps` مرتب: رقم الخطوة، الوصف، السرعة، الوقت، الحرارة، الضغط، ملاحظات).
+  - قسم "بارامترات عامة" (pasteurization, cooling, filling, تعليمات خاصة).
+  - Footer: توقيع مهندس الجودة/الإنتاج.
+- التحويل لـ PDF عبر `html2pdf.js` (متاحة بالفعل).
+- BMR: نفس القالب لكن بحقول فارغة قابلة للتعبئة اليدوية أثناء التصنيع (وزن فعلي، قراءات pH لكل خطوة، الملاحظات).
 
-```
-{ name, code, supplier, percentage, min_percent, max_percent,
-  standard_spec, cost, expiry_date, storage_conditions,
-  quantity, unit }
-```
+### 4. تقارير عدم مطابقة (NCR) + إجراءات تصحيحية (CAPA)
 
-الحاسبة الحالية بتضرب `quantity`، فتبقى شغالة. الحقول الإضافية اختيارية.
-
-### 3. الوصفة (Recipe)
-
-`recipe` JSONB = `{ steps: [...], parameters: {...} }` حيث كل step:
-
-```
-{ order, ingredient_ref, quantity, stir_speed, stir_time,
-  temperature, pressure, notes }
-```
-
-`parameters`: `pasteurization_time`, `cooling_time`, `filling_point`, `special_instructions`.
-
-### 4. نظام الصلاحيات
-
-توسيع enum `app_role` بالأدوار:
+جدول جديد `ncr_reports`:
 
 ```
-owner, admin, qa_manager, production_manager,
-qa_engineer, production_engineer, laboratory,
-maintenance, warehouse, viewer, user
+id, ncr_number (SERIAL), product_id (FK اختياري), category,
+problem_description, root_cause, corrective_action, preventive_action,
+severity (low/medium/high/critical), status (open/in_progress/closed),
+opened_by, opened_at, closed_by, closed_at, closed_notes
 ```
 
-`owner` يبقى صاحب المشروع (طارق). واجهة "إدارة المستخدمين" الحالية تتوسع لتشمل: إضافة مستخدم بأي دور، وتغيير دور مستخدم موجود.
-
-RLS على المنتجات: يقرأ الكل (authenticated)؛ يعدّل/يضيف: `admin`, `qa_manager`, `production_manager`, `owner` فقط؛ يحذف: `owner` أو `admin`. باقي الأدوار view فقط. أضيف دالة `has_any_role()`.
-
-### 5. واجهة صفحة المنتجات `/products/$category`
-
-نموذج الإضافة/التعديل يبقى تبويبات:
-
-1. **الأساسي**: اسم، كود، نوع، حجم عبوة، صورة (URL)، وصف
-2. **المواصفات القياسية**: pH, Brix, لزوجة, وزن صافي, صلاحية, تخزين, حساسية
-3. **الخامات**: جدول ديناميكي بأعمدة الخامة الجديدة
-4. **الوصفة**: قائمة خطوات مرتبة + بارامترات عامة
-
-الحاسبة والبحث الحاليان يفضلوا يشتغلوا. Card المنتج يعرض الصورة والكود والنوع، وزرار "عرض التفاصيل" يفتح جميع المواصفات والوصفة في modal منسق.
+- تبويبة جديدة في الـ Hub: "تقارير عدم المطابقة".
+- الواجهة: قائمة NCRs مع فلترة بالحالة + زر "NCR جديد" يفتح نموذج (اختيار المنتج، وصف المشكلة، السبب الجذري، الإجراء التصحيحي، الوقائي، الخطورة).
+- زر "إغلاق التقرير" بيسجل من أغلق ومتى + ملاحظات.
+- RLS: يفتح NCR أي مستخدم authenticated، يعدل/يغلق فقط الأدوار الإدارية (qa_manager, admin, owner).
 
 ### تفاصيل تقنية
 
-- Migration واحدة: `ALTER TABLE products ADD COLUMN ...`، `ALTER TYPE app_role ADD VALUE ...`، `CREATE FUNCTION has_any_role`، تحديث RLS policies.
-- الحقول القديمة في `ingredients` تتقرأ كما هي؛ الجديدة optional.
-- Zod validation client-side على النموذج بالكامل.
-- الصورة: `image_url` نصي (رابط) — رفع الصور لـ Supabase Storage يتأجل لمرحلة لاحقة عشان ما نطولش.
+- Migration واحدة: bucket policies + `ncr_reports` + trigger `updated_at`.
+- حزمة جديدة واحدة فقط: `qrcode`.
+- كل التعديلات في صفحة المنتجات الحالية `products.$category.tsx` + صفحة NCR جديدة `ncr.tsx` + تبويبة في `index.tsx`.
+- بقاء `html2pdf.js` هو محرك التصدير.
 
-### ملفات هتتعدل
+### ملفات هتتعدل / تتعمل
 
-- Migration جديدة (schema + roles + policies)
-- `src/routes/products.$category.tsx` (نموذج تبويبات + عرض تفاصيل)
-- `src/routes/index.tsx` (تبويبة إدارة المستخدمين: dropdown أدوار)
-
-### مش داخل المرحلة دي (هتيجي بعدين)
-
-مساعد التصنيع الذكي، توليد SOP/BMR، شاشات المراقبة، NCR/CAPA، Dashboard، تقارير PDF/Excel، QR/Barcode، رفع صور، Audit trail، Dark mode. كلها مراحل لاحقة حسب اختيارك.
+- Migration جديدة
+- `src/routes/products.$category.tsx` (رفع صورة + QR + SOP + BMR)
+- `src/routes/ncr.tsx` (جديد)
+- `src/routes/index.tsx` (تبويبة NCR في الـ Hub)
+- إعداد Storage bucket عبر أداة Lovable Cloud
 
 أوافق أبدأ التنفيذ؟
