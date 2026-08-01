@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type FormEvent } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -541,6 +542,7 @@ function roleLabel(role: string, lang: Lang): string {
 }
 
 function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
+  const createAppUserFn = useServerFn(createAppUser);
   const [users, setUsers] = useState<{ id: string; username: string; role: string }[]>([]);
   const [u, setU] = useState(""); const [p, setP] = useState("");
   const [newRole, setNewRole] = useState<string>("user");
