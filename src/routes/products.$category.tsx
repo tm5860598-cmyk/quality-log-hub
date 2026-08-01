@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -119,26 +119,12 @@ export const Route = createFileRoute("/products/$category")({
 function ProductsPage() {
   const { category } = Route.useParams();
   const meta = CATEGORIES[category];
-  const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
-  const [userRole, setUserRole] = useState<string>("user");
+  const { session, role: userRole, ready } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { setSession(s); setReady(true); });
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true); });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    supabase.from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle()
-      .then(({ data }) => setUserRole((data?.role as string) ?? "user"));
-  }, [session]);
 
   const canEdit = PRIVILEGED_ROLES.includes(userRole);
   const canDelete = userRole === "owner" || userRole === "admin";

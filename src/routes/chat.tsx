@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Plus, MessageSquare, Trash2, ArrowLeft, Menu, X } from "lucide-react";
 import { toast } from "sonner";
@@ -32,8 +32,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 function ChatLayout() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false);
+  const { session, ready: authReady } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -42,18 +41,6 @@ function ChatLayout() {
   const activeId = params.threadId;
   const category = search.category && CATEGORIES[search.category] ? search.category : "general";
   const cat = CATEGORIES[category];
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setAuthReady(true);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthReady(true);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
 
   const loadThreads = useCallback(async () => {
     if (!session) return;
