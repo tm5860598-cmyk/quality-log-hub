@@ -96,7 +96,7 @@ function Index() {
       ) : (
         <AppScreen
           lang={lang} setLang={setLang} t={t} dir={dir}
-          username={username} role={role ?? "user"}
+          username={username} role={role as "owner" | "user"}
         />
       )}
     </div>
@@ -280,7 +280,8 @@ function AppScreen({
     toast.success(t.exported);
   };
 
-  const logout = async () => { await supabase.auth.signOut(); };
+  const { signOut } = useAuth();
+  const logout = async () => { await signOut(); };
 
   return (
     <div className="p-4 md:p-6 print:p-0">
