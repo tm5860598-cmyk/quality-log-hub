@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, Sparkles, User, Printer, Save } from "lucide-react";
@@ -21,13 +22,12 @@ function getText(m: UIMessage) {
 function ChatThread() {
   const { threadId } = Route.useParams();
   const [initial, setInitial] = useState<UIMessage[] | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const { session } = useAuth();
+  const token = session?.access_token ?? null;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: s } = await supabase.auth.getSession();
-      if (!cancelled) setToken(s.session?.access_token ?? null);
       const { data, error } = await supabase
         .from("chat_messages")
         .select("message, created_at")
