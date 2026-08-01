@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,25 +50,12 @@ export const Route = createFileRoute("/ncr")({
 });
 
 function NcrPage() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
-  const [role, setRole] = useState<string>("user");
+  const { session, role, ready } = useAuth();
   const [list, setList] = useState<Ncr[]>([]);
   const [selected, setSelected] = useState<Ncr | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { setSession(s); setReady(true); });
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true); });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-  useEffect(() => {
-    if (!session) return;
-    supabase.from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle()
-      .then(({ data }) => setRole((data?.role as string) ?? "user"));
-  }, [session]);
 
   const canEdit = PRIVILEGED.includes(role);
   const canDelete = role === "owner" || role === "admin";

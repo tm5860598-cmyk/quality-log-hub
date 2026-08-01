@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type FormEvent } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,8 @@ import {
   LogOut, Users, FileText, LogIn, UserPlus, FolderOpen, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@/lib/auth-context";
+import { createAppUser } from "@/lib/users.functions";
 
 export const Route = createFileRoute("/")({ component: Index });
 
@@ -80,47 +82,9 @@ const userToEmail = (u: string) => `${sanitizeUsername(u)}@app.local`;
 
 function Index() {
   const [lang, setLang] = useState<Lang>("ar");
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [role, setRole] = useState<"owner" | "user" | null>(null);
-  const [username, setUsername] = useState<string>("");
+  const { session, role, username, ready: authReady } = useAuth();
   const t = T[lang];
   const dir = lang === "ar" ? "rtl" : "ltr";
-
-  useEffect(() => {
-    let mounted = true;
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (!mounted) return;
-      // Ignore transient null sessions from TOKEN_REFRESHED/INITIAL_SESSION
-      // that would otherwise kick a signed-in user back to the login screen.
-      if (event === "SIGNED_OUT") {
-        setSession(null);
-        return;
-      }
-      if (s) setSession(s);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setAuthReady(true);
-    });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!session) { setRole(null); setUsername(""); return; }
-    (async () => {
-      const [{ data: profile }, { data: roleRow }] = await Promise.all([
-        supabase.from("profiles").select("username").eq("id", session.user.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle(),
-      ]);
-      setUsername(profile?.username ?? "");
-      setRole((roleRow?.role as "owner" | "user") ?? "user");
-    })();
-  }, [session]);
 
   if (!authReady) {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50">...</div>;
@@ -133,7 +97,7 @@ function Index() {
       ) : (
         <AppScreen
           lang={lang} setLang={setLang} t={t} dir={dir}
-          username={username} role={role ?? "user"}
+          username={username} role={role as "owner" | "user"}
         />
       )}
     </div>
@@ -317,7 +281,8 @@ function AppScreen({
     toast.success(t.exported);
   };
 
-  const logout = async () => { await supabase.auth.signOut(); };
+  const { signOut } = useAuth();
+  const logout = async () => { await signOut(); };
 
   return (
     <div className="p-4 md:p-6 print:p-0">
@@ -577,6 +542,7 @@ function roleLabel(role: string, lang: Lang): string {
 }
 
 function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
+  const createAppUserFn = useServerFn(createAppUser);
   const [users, setUsers] = useState<{ id: string; username: string; role: string }[]>([]);
   const [u, setU] = useState(""); const [p, setP] = useState("");
   const [newRole, setNewRole] = useState<string>("user");
@@ -601,35 +567,18 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
     if (!p) return toast.error(t.invalidPassword);
     setLoading(true);
 
-    const { data: ownerSession } = await supabase.auth.getSession();
-    const ownerRefresh = ownerSession.session?.refresh_token;
-
-    const { data: signUpData, error } = await supabase.auth.signUp({
-      email: userToEmail(uname), password: p,
-      options: { data: { username: uname } },
-    });
-
-    if (ownerRefresh) {
-      await supabase.auth.refreshSession({ refresh_token: ownerRefresh });
+    // Created server-side with admin privileges so the owner's own session
+    // in this browser is never replaced.
+    try {
+      await createAppUserFn({ data: { username: uname, password: p, role: newRole } });
+      toast.success(t.userAdded);
+      setU(""); setP(""); setNewRole("user");
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
-
-    if (error) { toast.error(error.message); setLoading(false); return; }
-
-    // Set the requested role (trigger inserts 'user' by default)
-    const newUserId = signUpData.user?.id;
-    if (newUserId && newRole !== "user") {
-      // Type cast to accommodate enum
-      const { error: roleErr } = await supabase
-        .from("user_roles")
-        .update({ role: newRole as never })
-        .eq("user_id", newUserId);
-      if (roleErr) toast.error(roleErr.message);
-    }
-
-    toast.success(t.userAdded);
-    setU(""); setP(""); setNewRole("user");
-    load();
-    setLoading(false);
   };
 
   const changeRole = async (userId: string, role: string) => {
