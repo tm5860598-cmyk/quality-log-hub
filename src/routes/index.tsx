@@ -11,7 +11,8 @@ import {
   LogOut, Users, FileText, LogIn, UserPlus, FolderOpen, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@/lib/auth-context";
+import { createAppUser } from "@/lib/users.functions";
 
 export const Route = createFileRoute("/")({ component: Index });
 
@@ -80,47 +81,9 @@ const userToEmail = (u: string) => `${sanitizeUsername(u)}@app.local`;
 
 function Index() {
   const [lang, setLang] = useState<Lang>("ar");
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [role, setRole] = useState<"owner" | "user" | null>(null);
-  const [username, setUsername] = useState<string>("");
+  const { session, role, username, ready: authReady } = useAuth();
   const t = T[lang];
   const dir = lang === "ar" ? "rtl" : "ltr";
-
-  useEffect(() => {
-    let mounted = true;
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (!mounted) return;
-      // Ignore transient null sessions from TOKEN_REFRESHED/INITIAL_SESSION
-      // that would otherwise kick a signed-in user back to the login screen.
-      if (event === "SIGNED_OUT") {
-        setSession(null);
-        return;
-      }
-      if (s) setSession(s);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setAuthReady(true);
-    });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!session) { setRole(null); setUsername(""); return; }
-    (async () => {
-      const [{ data: profile }, { data: roleRow }] = await Promise.all([
-        supabase.from("profiles").select("username").eq("id", session.user.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle(),
-      ]);
-      setUsername(profile?.username ?? "");
-      setRole((roleRow?.role as "owner" | "user") ?? "user");
-    })();
-  }, [session]);
 
   if (!authReady) {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50">...</div>;
