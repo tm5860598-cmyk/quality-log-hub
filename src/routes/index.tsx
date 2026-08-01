@@ -565,35 +565,18 @@ function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
     if (!p) return toast.error(t.invalidPassword);
     setLoading(true);
 
-    const { data: ownerSession } = await supabase.auth.getSession();
-    const ownerRefresh = ownerSession.session?.refresh_token;
-
-    const { data: signUpData, error } = await supabase.auth.signUp({
-      email: userToEmail(uname), password: p,
-      options: { data: { username: uname } },
-    });
-
-    if (ownerRefresh) {
-      await supabase.auth.refreshSession({ refresh_token: ownerRefresh });
+    // Created server-side with admin privileges so the owner's own session
+    // in this browser is never replaced.
+    try {
+      await createAppUserFn({ data: { username: uname, password: p, role: newRole } });
+      toast.success(t.userAdded);
+      setU(""); setP(""); setNewRole("user");
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
-
-    if (error) { toast.error(error.message); setLoading(false); return; }
-
-    // Set the requested role (trigger inserts 'user' by default)
-    const newUserId = signUpData.user?.id;
-    if (newUserId && newRole !== "user") {
-      // Type cast to accommodate enum
-      const { error: roleErr } = await supabase
-        .from("user_roles")
-        .update({ role: newRole as never })
-        .eq("user_id", newUserId);
-      if (roleErr) toast.error(roleErr.message);
-    }
-
-    toast.success(t.userAdded);
-    setU(""); setP(""); setNewRole("user");
-    load();
-    setLoading(false);
   };
 
   const changeRole = async (userId: string, role: string) => {
