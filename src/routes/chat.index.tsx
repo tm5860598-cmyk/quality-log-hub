@@ -15,11 +15,11 @@ function ChatIndex() {
   const search = useSearch({ from: "/chat" }) as { category?: string };
   const category = search.category && CATEGORIES[search.category] ? search.category : "general";
   const cat = CATEGORIES[category];
-  const { session, ready } = useAuth();
+  const { session, status } = useAuth();
   const started = useRef(false);
 
   useEffect(() => {
-    if (!ready || !session) return;
+    if (status !== "authenticated" || !session) return;
     if (started.current) return;
     started.current = true;
     (async () => {
@@ -40,7 +40,7 @@ function ChatIndex() {
       if (error || !data) { toast.error(error?.message ?? "Error"); return; }
       navigate({ to: "/chat/$threadId", params: { threadId: data.id }, search: { category }, replace: true });
     })();
-  }, [category, cat.label, navigate, ready, session]);
+  }, [category, cat.label, navigate, status, session]);
 
   return (
     <div className="flex-1 grid place-items-center p-8">

@@ -109,6 +109,7 @@ function normalizeProduct(p: Record<string, unknown>): Product {
 }
 
 export const Route = createFileRoute("/products/$category")({
+  ssr: false,
   component: ProductsPage,
   errorComponent: ({ error }) => (
     <div className="p-6 text-center text-sm text-destructive">{String(error?.message ?? error)}</div>
@@ -119,7 +120,7 @@ export const Route = createFileRoute("/products/$category")({
 function ProductsPage() {
   const { category } = Route.useParams();
   const meta = CATEGORIES[category];
-  const { session, role: userRole, ready } = useAuth();
+  const { session, role: userRole, status } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
@@ -151,9 +152,9 @@ function ProductsPage() {
     );
   }, [products, query]);
 
-  if (!ready) return <div className="min-h-screen grid place-items-center text-slate-500">...</div>;
+  if (status === "loading") return <div className="min-h-screen grid place-items-center text-slate-500">...</div>;
   if (!meta) return <div className="p-6 text-center">قسم غير معروف</div>;
-  if (!session) {
+  if (status === "unauthenticated" || !session) {
     return (
       <div className="min-h-screen grid place-items-center p-6 bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50" dir="rtl">
         <div className="text-center space-y-4">

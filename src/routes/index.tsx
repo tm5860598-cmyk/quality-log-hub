@@ -15,7 +15,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { createAppUser } from "@/lib/users.functions";
 
-export const Route = createFileRoute("/")({ component: Index });
+export const Route = createFileRoute("/")({
+  ssr: false,
+  component: Index,
+  head: () => ({
+    meta: [
+      { title: "My Favourite Project | تقارير الجودة" },
+      { name: "description", content: "إدارة تقارير الجودة والإنتاج والمنتجات والإجراءات التصحيحية." },
+      { property: "og:title", content: "My Favourite Project | تقارير الجودة" },
+      { property: "og:description", content: "إدارة تقارير الجودة والإنتاج والمنتجات والإجراءات التصحيحية." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+});
 
 type Row = { id: string; problem: string; action: string; qualitySign: string; productionSign: string };
 type Lang = "ar" | "en";
@@ -82,17 +95,17 @@ const userToEmail = (u: string) => `${sanitizeUsername(u)}@app.local`;
 
 function Index() {
   const [lang, setLang] = useState<Lang>("ar");
-  const { session, role, username, ready: authReady } = useAuth();
+  const { session, role, username, status } = useAuth();
   const t = T[lang];
   const dir = lang === "ar" ? "rtl" : "ltr";
 
-  if (!authReady) {
+  if (status === "loading") {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50">...</div>;
   }
 
   return (
     <div dir={dir} className="min-h-screen bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50">
-      {!session ? (
+      {status === "unauthenticated" ? (
         <AuthScreen lang={lang} setLang={setLang} t={t} />
       ) : (
         <AppScreen

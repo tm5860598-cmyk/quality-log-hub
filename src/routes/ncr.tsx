@@ -44,13 +44,14 @@ const SEV_LABEL: Record<string, string> = { low: "منخفض", medium: "متوس
 const STATUS_LABEL: Record<string, string> = { open: "مفتوح", investigating: "قيد التحقيق", action: "تنفيذ إجراء", closed: "مغلق" };
 
 export const Route = createFileRoute("/ncr")({
+  ssr: false,
   component: NcrPage,
   errorComponent: ({ error }) => <div className="p-6 text-center text-sm text-destructive">{String(error?.message ?? error)}</div>,
   notFoundComponent: () => <div className="p-6 text-center">غير موجود</div>,
 });
 
 function NcrPage() {
-  const { session, role, ready } = useAuth();
+  const { session, role, status } = useAuth();
   const [list, setList] = useState<Ncr[]>([]);
   const [selected, setSelected] = useState<Ncr | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -85,8 +86,8 @@ function NcrPage() {
     load();
   };
 
-  if (!ready) return <div className="min-h-screen grid place-items-center text-slate-500">...</div>;
-  if (!session) return (
+  if (status === "loading") return <div className="min-h-screen grid place-items-center text-slate-500">...</div>;
+  if (status === "unauthenticated" || !session) return (
     <div dir="rtl" className="min-h-screen grid place-items-center p-6 bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50">
       <div className="text-center space-y-4">
         <h2 className="text-xl font-semibold">سجّل الدخول للوصول لتقارير عدم المطابقة</h2>

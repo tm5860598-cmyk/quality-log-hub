@@ -23,6 +23,7 @@ export const CATEGORIES: Record<string, { label: string; emoji: string }> = {
 const searchSchema = z.object({ category: z.string().optional() });
 
 export const Route = createFileRoute("/chat")({
+  ssr: false,
   component: ChatLayout,
   validateSearch: (s) => searchSchema.parse(s),
   errorComponent: ({ error }) => (
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 function ChatLayout() {
-  const { session, ready: authReady } = useAuth();
+  const { session, status } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -73,11 +74,11 @@ function ChatLayout() {
     if (activeId === id) navigate({ to: "/chat", search: { category } });
   };
 
-  if (!authReady) {
+  if (status === "loading") {
     return <div className="min-h-screen grid place-items-center text-muted-foreground">...</div>;
   }
 
-  if (!session) {
+  if (status === "unauthenticated" || !session) {
     return (
       <div className="min-h-screen grid place-items-center p-6 bg-gradient-to-br from-primary/5 to-accent/5">
         <div className="text-center space-y-4 max-w-sm">

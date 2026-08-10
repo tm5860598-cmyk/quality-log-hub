@@ -2,14 +2,18 @@ import {
   createContext, useContext, useEffect, useMemo, useRef, useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+
+type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 type AuthValue = {
   session: Session | null;
   userId: string | null;
   role: string;
   username: string;
+  status: AuthStatus;
   ready: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -28,8 +32,9 @@ const AuthContext = createContext<AuthValue | null>(null);
  *   null payloads from `INITIAL_SESSION` / `TOKEN_REFRESHED` are ignored.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
+  const [status, setStatus] = useState<AuthStatus>("loading");
   const [role, setRole] = useState<string>("user");
   const [username, setUsername] = useState<string>("");
   const userId = session?.user.id ?? null;
@@ -37,43 +42,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let authEventRevision = 0;
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+    const applySession = (nextSession: Session | null) => {
       if (!mounted) return;
-      if (event === "SIGNED_OUT") {
-        setSession(null);
+      setSession(nextSession);
+      setStatus(nextSession ? "authenticated" : "unauthenticated");
+      if (!nextSession) {
         setRole("user");
         setUsername("");
         loadedFor.current = null;
-        setReady(true);
+      }
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (!mounted) return;
+      authEventRevision += 1;
+      if (event === "SIGNED_OUT") {
+        applySession(null);
         return;
       }
-      if (s) setSession(s);
-      if (event === "INITIAL_SESSION") setReady(true);
+      if (s) {
+        applySession(s);
+        return;
+      }
+      if (event === "INITIAL_SESSION") applySession(null);
     });
 
+    // getSession hydrates the persisted localStorage session. Its result is
+    // accepted only when no newer auth event arrived while it was pending.
+    // This prevents a stale null/session result from winning the startup race.
+    const revisionAtStart = authEventRevision;
     supabase.auth
       .getSession()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!mounted) return;
-        if (data.session) setSession(data.session);
-      })
-      .finally(() => {
-        if (mounted) setReady(true);
+        if (authEventRevision !== revisionAtStart) return;
+        if (error) {
+          // A temporary storage/network error is not proof of logout. Keep the
+          // app loading until INITIAL_SESSION or a definitive auth event wins.
+          console.error("Session hydration failed", error);
+          return;
+        }
+        applySession(data.session);
       });
-
-    // Re-validate when the tab regains focus (desktop keeps tabs open for
-    // hours). We never sign the user out here — Supabase handles refresh.
-    const onFocus = () => {
-      supabase.auth.getSession().then(({ data }) => {
-        if (mounted && data.session) setSession(data.session);
-      });
-    };
-    window.addEventListener("focus", onFocus);
 
     return () => {
       mounted = false;
-      window.removeEventListener("focus", onFocus);
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -100,18 +115,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useMemo(
     () => async () => {
+      await queryClient.cancelQueries();
+      queryClient.clear();
       await supabase.auth.signOut();
       setSession(null);
+      setStatus("unauthenticated");
       setRole("user");
       setUsername("");
       loadedFor.current = null;
     },
-    [],
+    [queryClient],
   );
 
   const value = useMemo<AuthValue>(
-    () => ({ session, userId, role, username, ready, refreshProfile, signOut }),
-    [session, userId, role, username, ready, refreshProfile, signOut],
+    () => ({
+      session,
+      userId,
+      role,
+      username,
+      status,
+      ready: status !== "loading",
+      refreshProfile,
+      signOut,
+    }),
+    [session, userId, role, username, status, refreshProfile, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
