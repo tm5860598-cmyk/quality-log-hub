@@ -802,6 +802,14 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
                       >
                         ✨ {t("بدء محادثة", "Start chat")}
                       </Link>
+                      <Link
+                        to="/documents/$category"
+                        params={{ category: tile.category! }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3 py-1.5 hover:bg-slate-50"
+                      >
+                        📄 {t("المستندات", "Documents")}
+                      </Link>
                     </>
                   )}
                 </div>
