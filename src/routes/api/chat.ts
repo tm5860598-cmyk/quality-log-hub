@@ -98,9 +98,52 @@ export const Route = createFileRoute("/api/chat")({
         const gateway = createLovableAiGatewayProvider(key);
         const model = gateway("google/gemini-3-flash-preview");
 
+        // ---- Knowledge base retrieval (RAG over department documents) ----
+        let ragBlock = "";
+        try {
+          const lastUser = [...messages].reverse().find((m) => m.role === "user");
+          const question = (lastUser?.parts ?? [])
+            .map((p) => ("text" in p ? (p as { text: string }).text : ""))
+            .join(" ")
+            .trim();
+          if (question) {
+            const { embedTexts } = await import("@/lib/embeddings.server");
+            const [queryEmbedding] = await embedTexts([question.slice(0, 4000)]);
+            const { data: matches } = await supabase.rpc("match_document_chunks", {
+              query_embedding: JSON.stringify(queryEmbedding),
+              filter_category: category,
+              match_count: 8,
+            });
+            const rows = (matches ?? []) as Array<{
+              file_name: string;
+              page_number: number | null;
+              content: string;
+              similarity: number;
+            }>;
+            const useful = rows.filter((r) => r.similarity > 0.3);
+            if (useful.length) {
+              ragBlock =
+                `\n\n## مستندات الشركة المتاحة لهذا القسم (المصدر الموثوق)\n` +
+                useful
+                  .map(
+                    (r, i) =>
+                      `[${i + 1}] الملف: ${r.file_name} — صفحة ${r.page_number ?? "-"}\n${r.content}`,
+                  )
+                  .join("\n---\n") +
+                `\n\nقواعد إلزامية عند وجود مستندات:\n` +
+                `- اعتمد أولًا على المقاطع أعلاه ولا تخترع أي معلومة غير موجودة فيها.\n` +
+                `- بعد كل معلومة مأخوذة من المستندات اذكر المصدر هكذا: (المصدر: اسم الملف — صفحة X).\n` +
+                `- أضف في نهاية الرد قسم "## 📚 المصادر" بجدول: الملف | الصفحة | المعلومة المستخرجة.\n` +
+                `- إذا لم تجد المعلومة في المستندات فاذكر بوضوح: "غير موجود في مستندات القسم" قبل أي معرفة عامة، وميّزها بعبارة (معرفة عامة – غير موثقة في المستندات).\n`;
+            }
+          }
+        } catch (e) {
+          console.error("rag error", e);
+        }
+
         const result = streamText({
           model,
-          system: SYSTEM_PROMPTS[category] ?? SYSTEM_PROMPTS.general,
+          system: (SYSTEM_PROMPTS[category] ?? SYSTEM_PROMPTS.general) + ragBlock,
           messages: await convertToModelMessages(messages),
         });
 
