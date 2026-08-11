@@ -14,6 +14,7 @@ import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ProductsCategoryRouteImport } from './routes/products.$category'
+import { Route as DocumentsCategoryRouteImport } from './routes/documents.$category'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
@@ -42,6 +43,11 @@ const ProductsCategoryRoute = ProductsCategoryRouteImport.update({
   path: '/products/$category',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentsCategoryRoute = DocumentsCategoryRouteImport.update({
+  id: '/documents/$category',
+  path: '/documents/$category',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   id: '/$threadId',
   path: '/$threadId',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/ncr': typeof NcrRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/documents/$category': typeof DocumentsCategoryRoute
   '/products/$category': typeof ProductsCategoryRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/ncr': typeof NcrRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/documents/$category': typeof DocumentsCategoryRoute
   '/products/$category': typeof ProductsCategoryRoute
   '/chat': typeof ChatIndexRoute
 }
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/ncr': typeof NcrRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/documents/$category': typeof DocumentsCategoryRoute
   '/products/$category': typeof ProductsCategoryRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/ncr'
     | '/api/chat'
     | '/chat/$threadId'
+    | '/documents/$category'
     | '/products/$category'
     | '/chat/'
   fileRoutesByTo: FileRoutesByTo
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/ncr'
     | '/api/chat'
     | '/chat/$threadId'
+    | '/documents/$category'
     | '/products/$category'
     | '/chat'
   id:
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/ncr'
     | '/api/chat'
     | '/chat/$threadId'
+    | '/documents/$category'
     | '/products/$category'
     | '/chat/'
   fileRoutesById: FileRoutesById
@@ -114,6 +126,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   NcrRoute: typeof NcrRoute
   ApiChatRoute: typeof ApiChatRoute
+  DocumentsCategoryRoute: typeof DocumentsCategoryRoute
   ProductsCategoryRoute: typeof ProductsCategoryRoute
 }
 
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/documents/$category': {
+      id: '/documents/$category'
+      path: '/documents/$category'
+      fullPath: '/documents/$category'
+      preLoaderRoute: typeof DocumentsCategoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat/$threadId': {
       id: '/chat/$threadId'
       path: '/$threadId'
@@ -188,18 +208,9 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   NcrRoute: NcrRoute,
   ApiChatRoute: ApiChatRoute,
+  DocumentsCategoryRoute: DocumentsCategoryRoute,
   ProductsCategoryRoute: ProductsCategoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
