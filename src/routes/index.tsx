@@ -779,45 +779,24 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
                   <h3 className="font-extrabold text-slate-800 text-lg leading-tight">{tile.title}</h3>
                   <p className="text-sm text-slate-600 mt-1">{tile.desc}</p>
                 </div>
-                <div className="mt-auto pt-2 flex flex-wrap gap-2">
-                  {tile.key === "reports" ? (
-                    <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${tile.gradient} bg-clip-text text-transparent`}>
-                      {t("فتح التقارير", "Open reports")} <span aria-hidden>→</span>
-                    </span>
-                  ) : (
-                    <>
-                      <Link
-                        to="/products/$category"
-                        params={{ category: tile.category! }}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`inline-flex items-center gap-1 rounded-lg bg-gradient-to-r ${tile.gradient} text-white text-xs font-semibold px-3 py-1.5 shadow hover:opacity-90`}
-                      >
-                        📦 {t("المنتجات والحاسبة", "Products & Calc")}
-                      </Link>
-                      <Link
-                        to="/chat"
-                        search={{ category: tile.category }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3 py-1.5 hover:bg-slate-50"
-                      >
-                        ✨ {t("بدء محادثة", "Start chat")}
-                      </Link>
-                      <Link
-                        to="/documents/$category"
-                        params={{ category: tile.category! }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3 py-1.5 hover:bg-slate-50"
-                      >
-                        📄 {t("المستندات", "Documents")}
-                      </Link>
-                    </>
-                  )}
+                <div className="mt-auto pt-2">
+                  <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${tile.gradient} bg-clip-text text-transparent`}>
+                    {tile.key === "reports" ? t("فتح التقارير", "Open reports") : t("فتح القسم", "Open department")}{" "}
+                    <span aria-hidden>→</span>
+                  </span>
                 </div>
               </div>
             </div>
           );
           if (tile.category) {
-            return <div key={tile.key} className="h-full">{inner}</div>;
+            return (
+              <Link key={tile.key} to="/dept/$category" params={{ category: tile.category }} className="h-full block">
+                {inner}
+              </Link>
+            );
+          }
+          if (tile.href) {
+            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
           }
           return (
             <button key={tile.key} onClick={tile.onClick} className="text-start h-full">{inner}</button>
