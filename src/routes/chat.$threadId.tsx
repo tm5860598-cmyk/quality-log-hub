@@ -7,7 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, Sparkles, User, Printer, Save } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { MarkdownView } from "@/components/MarkdownView";
+import { CATEGORY_LABELS } from "@/lib/departments";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$threadId")({
@@ -21,6 +22,7 @@ function getText(m: UIMessage) {
 
 function ChatThread() {
   const { threadId } = Route.useParams();
+  const { category } = Route.useSearch();
   const [initial, setInitial] = useState<UIMessage[] | null>(null);
   const { session } = useAuth();
   const token = session?.access_token ?? null;
@@ -44,10 +46,10 @@ function ChatThread() {
     return <div className="flex-1 grid place-items-center text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>;
   }
 
-  return <ChatInner threadId={threadId} initial={initial} token={token} />;
+  return <ChatInner threadId={threadId} initial={initial} token={token} category={category} />;
 }
 
-function ChatInner({ threadId, initial, token }: { threadId: string; initial: UIMessage[]; token: string }) {
+function ChatInner({ threadId, initial, token, category }: { threadId: string; initial: UIMessage[]; token: string; category?: string }) {
   const transport = new DefaultChatTransport({
     api: "/api/chat",
     headers: { Authorization: `Bearer ${token}` },
@@ -70,6 +72,7 @@ function ChatInner({ threadId, initial, token }: { threadId: string; initial: UI
   useEffect(() => { inputRef.current?.focus(); }, [threadId, status]);
 
   const isBusy = status === "submitted" || status === "streaming";
+  const reportTitle = getText(messages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).slice(0, 80);
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -100,6 +103,12 @@ function ChatInner({ threadId, initial, token }: { threadId: string; initial: UI
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-6 print:max-w-full">
+          <div className="print-only mb-4 border-b pb-3">
+            <h1 className="text-xl font-extrabold">تقرير — {CATEGORY_LABELS[category ?? ""] ?? "المساعد الذكي"}</h1>
+            <p className="text-xs">
+              {reportTitle ? `الموضوع: ${reportTitle} — ` : ""}التاريخ: {new Date().toLocaleDateString("ar-EG")} — My Favourite Project
+            </p>
+          </div>
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-12">
               <Sparkles className="size-10 mx-auto mb-3 text-primary" />
@@ -118,9 +127,7 @@ function ChatInner({ threadId, initial, token }: { threadId: string; initial: UI
                   {isUser ? (
                     <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
                   ) : (
-                    <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:my-2">
-                      <ReactMarkdown>{text || "..."}</ReactMarkdown>
-                    </div>
+                    <MarkdownView>{text || "..."}</MarkdownView>
                   )}
                 </div>
               </div>
