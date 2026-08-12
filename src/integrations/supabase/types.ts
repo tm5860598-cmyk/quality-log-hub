@@ -171,12 +171,15 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          doc_group_id: string | null
           error_message: string | null
           file_name: string
           file_size: number | null
           file_type: string
           id: string
+          is_current: boolean
           page_count: number | null
+          processed_at: string | null
           product_id: string | null
           product_name: string | null
           status: string
@@ -184,16 +187,20 @@ export type Database = {
           title: string
           updated_at: string
           uploaded_by: string
+          version: number
         }
         Insert: {
           category: string
           created_at?: string
+          doc_group_id?: string | null
           error_message?: string | null
           file_name: string
           file_size?: number | null
           file_type: string
           id?: string
+          is_current?: boolean
           page_count?: number | null
+          processed_at?: string | null
           product_id?: string | null
           product_name?: string | null
           status?: string
@@ -201,16 +208,20 @@ export type Database = {
           title: string
           updated_at?: string
           uploaded_by: string
+          version?: number
         }
         Update: {
           category?: string
           created_at?: string
+          doc_group_id?: string | null
           error_message?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string
           id?: string
+          is_current?: boolean
           page_count?: number | null
+          processed_at?: string | null
           product_id?: string | null
           product_name?: string | null
           status?: string
@@ -218,6 +229,7 @@ export type Database = {
           title?: string
           updated_at?: string
           uploaded_by?: string
+          version?: number
         }
         Relationships: [
           {
