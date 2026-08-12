@@ -796,7 +796,7 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
             );
           }
           if (tile.href) {
-            return <Link key={tile.key} to={tile.href} className="h-full block">{inner}</Link>;
+            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
           }
           return (
             <button key={tile.key} onClick={tile.onClick} className="text-start h-full">{inner}</button>
