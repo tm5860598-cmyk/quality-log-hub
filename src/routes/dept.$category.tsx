@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useDeptPermissions } from "@/lib/permissions";
 import { DEPT_MAP } from "@/lib/departments";
 import { ArrowRight, Boxes, FileText, Sparkles, Clock } from "lucide-react";
 
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/dept/$category")({
 function DeptPage() {
   const { category } = Route.useParams();
   const { status } = useAuth();
+  const { can, loading: permLoading } = useDeptPermissions();
   const dept = DEPT_MAP[category];
   const [stats, setStats] = useState({ products: 0, documents: 0, updated: "" });
 
@@ -32,6 +34,21 @@ function DeptPage() {
     })();
   }, [category, status]);
 
+  if (permLoading) {
+    return <div className="min-h-screen grid place-items-center text-muted-foreground">جاري التحقق من الصلاحيات...</div>;
+  }
+  if (dept && !can(category).view) {
+    return (
+      <div dir="rtl" className="min-h-screen grid place-items-center p-6 text-center bg-background">
+        <div className="max-w-md space-y-3">
+          <div className="text-4xl">🔒</div>
+          <h1 className="text-xl font-bold">لا تملك صلاحية الدخول لهذا القسم</h1>
+          <p className="text-sm text-muted-foreground">اطلب من المالك منحك صلاحية «عرض» لهذا القسم من صفحة الإعدادات.</p>
+          <Link to="/" className="text-primary underline text-sm">العودة للرئيسية</Link>
+        </div>
+      </div>
+    );
+  }
   if (!dept) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
