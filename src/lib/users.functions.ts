@@ -3,8 +3,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const MANAGER_ROLES = ["owner", "admin"];
 
-type Ctx = { supabase: { from: (t: string) => never }; userId: string };
-
 /** Returns the caller's role, throwing unless they may manage users. */
 async function requireManager(context: { supabase: any; userId: string }) {
   const { data } = await context.supabase
