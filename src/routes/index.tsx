@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Languages, Plus, Save, Printer, FileDown, Trash2,
-  LogOut, Users, FileText, LogIn, UserPlus, FolderOpen, Sparkles,
+  LogOut, FileText, LogIn, UserPlus, FolderOpen, Sparkles, Settings as SettingsIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { createAppUser } from "@/lib/users.functions";
+import { useDeptPermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -204,7 +204,7 @@ function AppScreen({
   lang: Lang; setLang: (l: Lang) => void; t: typeof T["ar"]; dir: "ltr" | "rtl";
   username: string; role: "owner" | "user";
 }) {
-  const [tab, setTab] = useState<"hub" | "editor" | "list" | "users">("hub");
+  const [tab, setTab] = useState<"hub" | "editor" | "list">("hub");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reportNumber, setReportNumber] = useState<number | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -320,6 +320,9 @@ function AppScreen({
             <Button variant="outline" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
               <Languages className="size-4" /> {t.lang}
             </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/settings"><SettingsIcon className="size-4" /> {lang === "ar" ? "الإعدادات" : "Settings"}</Link>
+            </Button>
             <Button variant="outline" size="sm" onClick={logout}>
               <LogOut className="size-4" /> {t.logout}
             </Button>
@@ -337,11 +340,6 @@ function AppScreen({
           <TabBtn active={tab === "list"} onClick={() => setTab("list")} icon={<FolderOpen className="size-4" />}>
             {t.savedReports} ({reports.length})
           </TabBtn>
-          {role === "owner" && (
-            <TabBtn active={tab === "users"} onClick={() => setTab("users")} icon={<Users className="size-4" />}>
-              {t.manageUsers}
-            </TabBtn>
-          )}
           {tab === "editor" && editingId && (
             <Button size="sm" variant="ghost" onClick={resetForm}>
               <Plus className="size-4" /> {t.newReport}
@@ -367,9 +365,6 @@ function AppScreen({
         )}
         {tab === "list" && (
           <ReportsList t={t} reports={reports} onOpen={openReport} onDelete={deleteReport} />
-        )}
-        {tab === "users" && role === "owner" && (
-          <UserManager t={t} lang={lang} />
         )}
       </div>
     </div>
@@ -535,138 +530,10 @@ function ReportsList({
   );
 }
 
-const ROLE_OPTIONS = [
-  { value: "admin", label_ar: "مدير", label_en: "Admin" },
-  { value: "qa_manager", label_ar: "مدير جودة", label_en: "QA Manager" },
-  { value: "production_manager", label_ar: "مدير إنتاج", label_en: "Production Manager" },
-  { value: "qa_engineer", label_ar: "مهندس جودة", label_en: "QA Engineer" },
-  { value: "production_engineer", label_ar: "مهندس إنتاج", label_en: "Production Engineer" },
-  { value: "laboratory", label_ar: "معمل", label_en: "Laboratory" },
-  { value: "maintenance", label_ar: "صيانة", label_en: "Maintenance" },
-  { value: "warehouse", label_ar: "مخازن", label_en: "Warehouse" },
-  { value: "viewer", label_ar: "مشاهد", label_en: "Viewer" },
-  { value: "user", label_ar: "مستخدم", label_en: "User" },
-];
-
-function roleLabel(role: string, lang: Lang): string {
-  if (role === "owner") return lang === "ar" ? "المالك" : "Owner";
-  const r = ROLE_OPTIONS.find((r) => r.value === role);
-  return r ? (lang === "ar" ? r.label_ar : r.label_en) : role;
-}
-
-function UserManager({ t, lang }: { t: typeof T["ar"]; lang: Lang }) {
-  const createAppUserFn = useServerFn(createAppUser);
-  const [users, setUsers] = useState<{ id: string; username: string; role: string }[]>([]);
-  const [u, setU] = useState(""); const [p, setP] = useState("");
-  const [newRole, setNewRole] = useState<string>("user");
-  const [loading, setLoading] = useState(false);
-
-  const load = async () => {
-    const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("id, username"),
-      supabase.from("user_roles").select("user_id, role"),
-    ]);
-    const roleMap = new Map((roles ?? []).map((r) => [r.user_id, r.role as string]));
-    setUsers((profiles ?? []).map((p) => ({
-      id: p.id, username: p.username, role: roleMap.get(p.id) ?? "user",
-    })));
-  };
-  useEffect(() => { load(); }, []);
-
-  const addUser = async (e: FormEvent) => {
-    e.preventDefault();
-    const uname = sanitizeUsername(u);
-    if (!uname) return toast.error(t.invalidUsername);
-    if (!p) return toast.error(t.invalidPassword);
-    setLoading(true);
-
-    // Created server-side with admin privileges so the owner's own session
-    // in this browser is never replaced.
-    try {
-      await createAppUserFn({ data: { username: uname, password: p, role: newRole } });
-      toast.success(t.userAdded);
-      setU(""); setP(""); setNewRole("user");
-      load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const changeRole = async (userId: string, role: string) => {
-    const { error } = await supabase
-      .from("user_roles")
-      .update({ role: role as never })
-      .eq("user_id", userId);
-    if (error) return toast.error(error.message);
-    toast.success(lang === "ar" ? "تم تحديث الدور" : "Role updated");
-    load();
-  };
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-6 shadow-xl">
-        <h2 className="text-lg font-bold text-indigo-900 mb-4 flex items-center gap-2">
-          <UserPlus className="size-5" /> {t.addUser}
-        </h2>
-        <form onSubmit={addUser} className="space-y-3">
-          <div>
-            <Label className="mb-1 block">{t.username}</Label>
-            <Input value={u} onChange={(e) => setU(e.target.value)} required />
-          </div>
-          <div>
-            <Label className="mb-1 block">{t.password}</Label>
-            <Input type="password" value={p} onChange={(e) => setP(e.target.value)} required />
-          </div>
-          <div>
-            <Label className="mb-1 block">{lang === "ar" ? "الدور" : "Role"}</Label>
-            <select value={newRole} onChange={(e) => setNewRole(e.target.value)}
-              className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm">
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r.value} value={r.value}>{lang === "ar" ? r.label_ar : r.label_en}</option>
-              ))}
-            </select>
-          </div>
-          <Button type="submit" disabled={loading}
-            className="w-full bg-gradient-to-r from-indigo-600 to-sky-600 text-white">
-            <UserPlus className="size-4" /> {t.addUser}
-          </Button>
-        </form>
-      </div>
-      <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-6 shadow-xl">
-        <h2 className="text-lg font-bold text-indigo-900 mb-4 flex items-center gap-2">
-          <Users className="size-5" /> {lang === "ar" ? "المستخدمون" : "Users"} ({users.length})
-        </h2>
-        <div className="space-y-2">
-          {users.map((usr) => (
-            <div key={usr.id} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-indigo-50/60 border border-indigo-100">
-              <span className="font-semibold text-slate-800 truncate">{usr.username}</span>
-              {usr.role === "owner" ? (
-                <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 shrink-0">
-                  {roleLabel("owner", lang)}
-                </span>
-              ) : (
-                <select
-                  value={usr.role}
-                  onChange={(e) => changeRole(usr.id, e.target.value)}
-                  className="text-xs h-8 rounded-md border border-slate-200 bg-white px-2 shrink-0"
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>{lang === "ar" ? r.label_ar : r.label_en}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
+  const { can } = useDeptPermissions();
   const tiles: Array<{
     key: string;
     title: string;
@@ -768,7 +635,7 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tiles.map((tile) => {
+        {tiles.filter((tile) => !tile.category || can(tile.category).view).map((tile) => {
           const inner = (
             <div className={`group h-full rounded-2xl bg-gradient-to-br ${tile.gradient} p-[1.5px] shadow-lg hover:shadow-2xl transition`}>
               <div className="h-full rounded-2xl bg-white/95 backdrop-blur p-5 flex flex-col gap-3">

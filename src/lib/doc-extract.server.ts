@@ -53,7 +53,7 @@ export async function extractPages(fileName: string, bytes: Uint8Array): Promise
   if (name.endsWith(".pdf")) return extractPdf(bytes);
   if (name.endsWith(".docx")) return extractDocx(bytes);
   if (name.endsWith(".doc")) throw new Error("صيغة .doc القديمة غير مدعومة — احفظ الملف كـ .docx أو PDF");
-  if (name.endsWith(".txt") || name.endsWith(".md")) {
+  if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".csv")) {
     const { strFromU8 } = await import("fflate");
     return [{ page: 1, text: clean(strFromU8(bytes)) }];
   }

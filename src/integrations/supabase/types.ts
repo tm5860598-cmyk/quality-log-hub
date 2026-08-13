@@ -126,6 +126,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dept_permissions: {
+        Row: {
+          can_delete: boolean
+          can_edit: boolean
+          can_upload: boolean
+          can_view: boolean
+          category: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_delete?: boolean
+          can_edit?: boolean
+          can_upload?: boolean
+          can_view?: boolean
+          category: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_delete?: boolean
+          can_edit?: boolean
+          can_upload?: boolean
+          can_view?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       document_chunks: {
         Row: {
           category: string
@@ -379,16 +415,19 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          job_title: string | null
           username: string
         }
         Insert: {
           created_at?: string
           id: string
+          job_title?: string | null
           username: string
         }
         Update: {
           created_at?: string
           id?: string
+          job_title?: string | null
           username?: string
         }
         Relationships: []
@@ -455,6 +494,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_dept: {
+        Args: { _action: string; _category: string; _user_id: string }
+        Returns: boolean
+      }
       has_any_role: {
         Args: { _roles: string[]; _user_id: string }
         Returns: boolean

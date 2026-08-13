@@ -8,10 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CATEGORY_LABELS } from "@/lib/departments";
-import { ArrowRight, FileText, Trash2, Upload, Download, Sparkles, Search, RefreshCw, History } from "lucide-react";
+import { ArrowRight, FileText, Trash2, Upload, Download, Sparkles, Search, RefreshCw, History, Eye, X } from "lucide-react";
+import { useDeptPermissions } from "@/lib/permissions";
 
-const PRIVILEGED = ["owner", "admin", "qa_manager", "production_manager", "qa_engineer", "production_engineer"];
 const MAX_SIZE = 40 * 1024 * 1024;
+const ACCEPT = ".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif";
+/** Types whose text can be extracted into the AI knowledge base. */
+const ANALYZABLE = ["pdf", "docx", "txt", "md", "csv"];
+
+const FILE_ICONS: Record<string, string> = {
+  pdf: "📕", doc: "📘", docx: "📘", txt: "📄", md: "📄", csv: "📊",
+  xls: "📗", xlsx: "📗", ppt: "📙", pptx: "📙",
+  png: "🖼️", jpg: "🖼️", jpeg: "🖼️", webp: "🖼️", gif: "🖼️",
+};
+const IMAGE_TYPES = ["png", "jpg", "jpeg", "webp", "gif"];
+const ext = (name: string) => name.split(".").pop()?.toLowerCase() ?? "";
 
 type Doc = {
   id: string; title: string; file_name: string; file_type: string; storage_path: string;
@@ -31,6 +42,8 @@ function statusMeta(s: string) {
     case "completed":
     case "ready":
       return { label: "جاهز للبحث", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" };
+    case "stored":
+      return { label: "محفوظ", cls: "bg-violet-500/15 text-violet-600 dark:text-violet-400" };
     case "failed":
       return { label: "فشل التحليل", cls: "bg-destructive/15 text-destructive" };
     case "processing":
@@ -42,8 +55,14 @@ function statusMeta(s: string) {
 
 function DocumentsPage() {
   const { category } = Route.useParams();
-  const { status: authStatus, role, userId } = useAuth();
-  const canEdit = PRIVILEGED.includes(role);
+  const { status: authStatus, userId } = useAuth();
+  const { can, loading: permLoading } = useDeptPermissions();
+  const perm = can(category);
+  const canView = perm.view;
+  const canUpload = perm.upload;
+  const canEdit = perm.edit;
+  const canDelete = perm.delete;
+  const [preview, setPreview] = useState<{ url: string; doc: Doc } | null>(null);
 
   const [docs, setDocs] = useState<Doc[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -140,12 +159,18 @@ function DocumentsPage() {
       if (ins.error) throw new Error(ins.error.message);
       const docId = ins.data.id as string;
       await supabase.from("documents").update({ doc_group_id: docId }).eq("id", docId);
-      toast.success("تم حفظ الملف — يبدأ التحليل الآن");
       setFile(null);
       setTitle("");
       setProductId("");
-      await load();
-      await analyze(docId);
+      if (ANALYZABLE.includes(ext(file.name))) {
+        toast.success("تم حفظ الملف — يبدأ التحليل الآن");
+        await load();
+        await analyze(docId);
+      } else {
+        await supabase.from("documents").update({ status: "stored" }).eq("id", docId);
+        toast.success("تم حفظ الملف في مكتبة القسم (هذه الصيغة تُعرض وتُحمّل بدون تحليل نصي)");
+        await load();
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "فشل رفع المستند");
       await load();
@@ -196,7 +221,12 @@ function DocumentsPage() {
       await supabase.from("documents").update({ is_current: false }).in("id", oldIds);
       await supabase.from("document_chunks").delete().in("document_id", oldIds);
       await load();
-      await analyze(ins.data.id as string, "تحليل النسخة الجديدة");
+      if (ANALYZABLE.includes(ext(f.name))) {
+        await analyze(ins.data.id as string, "تحليل النسخة الجديدة");
+      } else {
+        await supabase.from("documents").update({ status: "stored" }).eq("id", ins.data.id as string);
+        await load();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "فشل رفع النسخة");
       await load();
@@ -204,6 +234,17 @@ function DocumentsPage() {
       setBusy(false);
       setProgress("");
     }
+  }
+
+  async function signed(d: Doc, secs = 300) {
+    const { data, error } = await supabase.storage.from("department-docs").createSignedUrl(d.storage_path, secs);
+    if (error || !data) { toast.error("تعذر فتح الملف"); return null; }
+    return data.signedUrl;
+  }
+
+  async function previewDoc(d: Doc) {
+    const url = await signed(d, 600);
+    if (url) setPreview({ url, doc: d });
   }
 
   async function openDoc(d: Doc) {
@@ -232,6 +273,22 @@ function DocumentsPage() {
     );
   }
 
+  if (permLoading) {
+    return <div className="min-h-screen grid place-items-center text-muted-foreground">جاري التحقق من الصلاحيات...</div>;
+  }
+  if (!canView) {
+    return (
+      <div dir="rtl" className="min-h-screen grid place-items-center p-6 text-center">
+        <div className="max-w-md space-y-3">
+          <div className="text-4xl">🔒</div>
+          <h1 className="text-xl font-bold">لا تملك صلاحية عرض ملفات هذا القسم</h1>
+          <p className="text-sm text-muted-foreground">اطلب من المالك منحك صلاحية «عرض» لهذا القسم من صفحة الإعدادات.</p>
+          <Link to="/" className="text-primary underline text-sm">العودة للرئيسية</Link>
+        </div>
+      </div>
+    );
+  }
+
   const current = docs.filter((d) => d.is_current !== false);
   const filtered = current.filter((d) =>
     !q.trim() ? true : (d.title + d.file_name + (d.product_name ?? "")).toLowerCase().includes(q.toLowerCase()),
@@ -239,7 +296,39 @@ function DocumentsPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background p-4 md:p-8">
-      <input ref={versionInput} type="file" accept=".pdf,.docx,.txt,.md" className="hidden" onChange={onNewVersion} />
+      {preview && (
+        <div className="fixed inset-0 z-50 bg-black/70 p-4 grid place-items-center print:hidden" onClick={() => setPreview(null)}>
+          <div className="bg-card rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2 border-b p-3">
+              <div className="font-semibold truncate">
+                {FILE_ICONS[ext(preview.doc.file_name)] ?? "📄"} {preview.doc.title}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" onClick={() => openDoc(preview.doc)}>
+                  <Download className="h-4 w-4" /> تحميل
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setPreview(null)}><X className="h-4 w-4" /></Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-muted/40 grid place-items-center p-3">
+              {IMAGE_TYPES.includes(ext(preview.doc.file_name)) ? (
+                <img src={preview.url} alt={preview.doc.title} className="max-h-[70vh] w-auto rounded-lg" />
+              ) : ext(preview.doc.file_name) === "pdf" ? (
+                <iframe src={preview.url} title={preview.doc.title} className="w-full h-[70vh] rounded-lg bg-white" />
+              ) : (
+                <div className="text-center space-y-3 py-10">
+                  <div className="text-5xl">{FILE_ICONS[ext(preview.doc.file_name)] ?? "📄"}</div>
+                  <p className="text-sm text-muted-foreground">
+                    هذه الصيغة ({ext(preview.doc.file_name).toUpperCase()}) لا تُعرض داخل المتصفح — حمّلها لفتحها في البرنامج المناسب.
+                  </p>
+                  <Button onClick={() => openDoc(preview.doc)}><Download className="h-4 w-4" /> تحميل الملف</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <input ref={versionInput} type="file" accept={ACCEPT} className="hidden" onChange={onNewVersion} />
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -248,7 +337,7 @@ function DocumentsPage() {
               مستندات قسم {CATEGORY_LABELS[category] ?? category}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              ارفع ملفات PDF / Word — يُحفظ الملف أولًا ثم يُحلّل على الخادم، فلا يضيع الملف حتى لو فشل التحليل.
+              ارفع PDF و Word و Excel و PowerPoint و TXT و CSV والصور. يُحفظ الملف أولًا، وما يمكن قراءته نصيًا (PDF, Word, TXT, CSV) يُحلَّل ويدخل قاعدة معرفة القسم.
             </p>
           </div>
           <Link to="/dept/$category" params={{ category }} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -256,7 +345,7 @@ function DocumentsPage() {
           </Link>
         </div>
 
-        {canEdit && (
+        {canUpload && (
           <div className="rounded-2xl bg-card border shadow-sm p-5 space-y-4">
             <h2 className="font-bold flex items-center gap-2"><Upload className="h-4 w-4" /> رفع مستند جديد</h2>
             <div className="grid gap-4 md:grid-cols-3">
@@ -278,8 +367,8 @@ function DocumentsPage() {
                 </select>
               </div>
               <div className="space-y-1">
-                <Label>الملف (PDF / DOCX / TXT)</Label>
-                <Input type="file" accept=".pdf,.docx,.txt,.md" onChange={onPick} />
+                <Label>الملف (PDF, Word, Excel, PowerPoint, TXT, CSV, صور)</Label>
+                <Input type="file" accept={ACCEPT} onChange={onPick} />
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
@@ -321,7 +410,9 @@ function DocumentsPage() {
                     return (
                       <tr key={d.id} className="border-b last:border-0 align-top">
                         <td className="py-2">
-                          <div className="font-semibold">{d.title}</div>
+                          <div className="font-semibold">
+                            <span className="me-1">{FILE_ICONS[ext(d.file_name)] ?? "📄"}</span>{d.title}
+                          </div>
                           <div className="text-xs text-muted-foreground">{d.file_name}</div>
                           {d.status === "failed" && d.error_message && (
                             <div className="text-xs text-destructive mt-1 max-w-xs">{d.error_message}</div>
@@ -343,10 +434,13 @@ function DocumentsPage() {
                           </span>
                         </td>
                         <td className="py-2 text-end whitespace-nowrap">
+                          <Button size="sm" variant="ghost" onClick={() => previewDoc(d)} title="معاينة">
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => openDoc(d)} title="تنزيل / فتح">
                             <Download className="h-4 w-4" />
                           </Button>
-                          {canEdit && (d.status === "failed" || d.status === "uploaded") && (
+                          {canEdit && ANALYZABLE.includes(ext(d.file_name)) && (d.status === "failed" || d.status === "uploaded") && (
                             <Button size="sm" variant="ghost" disabled={!!busyId} onClick={() => analyze(d.id, "إعادة التحليل")} title="إعادة التحليل">
                               <RefreshCw className="h-4 w-4" />
                             </Button>
@@ -356,7 +450,7 @@ function DocumentsPage() {
                               <Upload className="h-4 w-4" />
                             </Button>
                           )}
-                          {canEdit && (
+                          {canDelete && (
                             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeDoc(d)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>

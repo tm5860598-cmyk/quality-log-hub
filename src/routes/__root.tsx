@@ -11,7 +11,6 @@ import {
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 function NotFoundComponent() {
   return (
@@ -111,7 +110,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}",
+              "try{var t=localStorage.getItem('theme')||'light';var e=document.documentElement;if(t==='dark'){e.classList.add('dark');e.style.colorScheme='dark';}else if(t==='vivid'){e.classList.add('theme-vivid');}}catch(e){}",
           }}
         />
         {children}
@@ -128,9 +127,6 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Outlet />
-        <div className="fixed bottom-4 left-4 z-50 print:hidden">
-          <ThemeToggle />
-        </div>
         <Toaster richColors position="top-center" />
       </AuthProvider>
     </QueryClientProvider>
