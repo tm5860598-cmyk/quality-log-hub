@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useDeptPermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -532,6 +533,7 @@ function ReportsList({
 
 function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
+  const { can } = useDeptPermissions();
   const tiles: Array<{
     key: string;
     title: string;
@@ -633,7 +635,7 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tiles.map((tile) => {
+        {tiles.filter((tile) => !tile.category || can(tile.category).view).map((tile) => {
           const inner = (
             <div className={`group h-full rounded-2xl bg-gradient-to-br ${tile.gradient} p-[1.5px] shadow-lg hover:shadow-2xl transition`}>
               <div className="h-full rounded-2xl bg-white/95 backdrop-blur p-5 flex flex-col gap-3">
