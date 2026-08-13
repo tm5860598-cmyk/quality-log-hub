@@ -144,6 +144,66 @@
 }
 
 /* ---------------------------------------------------------------
+ * Vivid theme — a fully colored, high-energy palette that keeps the
+ * project identity (indigo → sky → emerald) while staying readable.
+ * ------------------------------------------------------------- */
+.theme-vivid {
+  --background: oklch(0.975 0.025 285);
+  --foreground: oklch(0.24 0.09 285);
+  --card: oklch(0.995 0.012 300);
+  --card-foreground: oklch(0.24 0.09 285);
+  --popover: oklch(0.995 0.012 300);
+  --popover-foreground: oklch(0.24 0.09 285);
+  --primary: oklch(0.55 0.24 295);
+  --primary-foreground: oklch(0.99 0.01 300);
+  --secondary: oklch(0.93 0.06 200);
+  --secondary-foreground: oklch(0.28 0.1 250);
+  --muted: oklch(0.94 0.04 290);
+  --muted-foreground: oklch(0.48 0.08 285);
+  --accent: oklch(0.86 0.13 190);
+  --accent-foreground: oklch(0.25 0.09 250);
+  --destructive: oklch(0.6 0.25 20);
+  --destructive-foreground: oklch(0.99 0.01 20);
+  --border: oklch(0.86 0.06 290);
+  --input: oklch(0.9 0.05 290);
+  --ring: oklch(0.6 0.2 295);
+  --sidebar: oklch(0.96 0.04 290);
+  --sidebar-foreground: oklch(0.24 0.09 285);
+  --sidebar-primary: oklch(0.55 0.24 295);
+  --sidebar-primary-foreground: oklch(0.99 0.01 300);
+  --sidebar-accent: oklch(0.9 0.08 200);
+  --sidebar-accent-foreground: oklch(0.25 0.09 250);
+  --sidebar-border: oklch(0.86 0.06 290);
+  --sidebar-ring: oklch(0.6 0.2 295);
+}
+
+.theme-vivid body {
+  background-image:
+    radial-gradient(60rem 40rem at 10% -10%, oklch(0.9 0.13 300 / 0.55), transparent 60%),
+    radial-gradient(50rem 35rem at 95% 5%, oklch(0.9 0.12 200 / 0.5), transparent 60%),
+    radial-gradient(45rem 35rem at 50% 110%, oklch(0.9 0.12 150 / 0.45), transparent 60%);
+  background-attachment: fixed;
+}
+
+.theme-vivid .bg-card,
+.theme-vivid .bg-white,
+.theme-vivid .bg-white\/95,
+.theme-vivid .bg-white\/90,
+.theme-vivid .bg-white\/80 {
+  background-color: color-mix(in oklab, var(--card) 88%, transparent) !important;
+  backdrop-filter: blur(6px);
+}
+
+.theme-vivid .text-slate-900,
+.theme-vivid .text-slate-800,
+.theme-vivid .text-slate-700 { color: var(--foreground) !important; }
+.theme-vivid .text-slate-600,
+.theme-vivid .text-slate-500 { color: var(--muted-foreground) !important; }
+.theme-vivid .border-slate-100,
+.theme-vivid .border-slate-200,
+.theme-vivid .border-indigo-100 { border-color: var(--border) !important; }
+
+/* ---------------------------------------------------------------
  * Dark-mode compatibility layer.
  * Older screens use literal slate/white utilities; in dark mode they
  * are remapped onto the semantic tokens so nothing stays blinding white.
