@@ -273,6 +273,22 @@ function DocumentsPage() {
     );
   }
 
+  if (permLoading) {
+    return <div className="min-h-screen grid place-items-center text-muted-foreground">جاري التحقق من الصلاحيات...</div>;
+  }
+  if (!canView) {
+    return (
+      <div dir="rtl" className="min-h-screen grid place-items-center p-6 text-center">
+        <div className="max-w-md space-y-3">
+          <div className="text-4xl">🔒</div>
+          <h1 className="text-xl font-bold">لا تملك صلاحية عرض ملفات هذا القسم</h1>
+          <p className="text-sm text-muted-foreground">اطلب من المالك منحك صلاحية «عرض» لهذا القسم من صفحة الإعدادات.</p>
+          <Link to="/" className="text-primary underline text-sm">العودة للرئيسية</Link>
+        </div>
+      </div>
+    );
+  }
+
   const current = docs.filter((d) => d.is_current !== false);
   const filtered = current.filter((d) =>
     !q.trim() ? true : (d.title + d.file_name + (d.product_name ?? "")).toLowerCase().includes(q.toLowerCase()),
@@ -280,6 +296,38 @@ function DocumentsPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background p-4 md:p-8">
+      {preview && (
+        <div className="fixed inset-0 z-50 bg-black/70 p-4 grid place-items-center print:hidden" onClick={() => setPreview(null)}>
+          <div className="bg-card rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2 border-b p-3">
+              <div className="font-semibold truncate">
+                {FILE_ICONS[ext(preview.doc.file_name)] ?? "📄"} {preview.doc.title}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" onClick={() => openDoc(preview.doc)}>
+                  <Download className="h-4 w-4" /> تحميل
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setPreview(null)}><X className="h-4 w-4" /></Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-muted/40 grid place-items-center p-3">
+              {IMAGE_TYPES.includes(ext(preview.doc.file_name)) ? (
+                <img src={preview.url} alt={preview.doc.title} className="max-h-[70vh] w-auto rounded-lg" />
+              ) : ext(preview.doc.file_name) === "pdf" ? (
+                <iframe src={preview.url} title={preview.doc.title} className="w-full h-[70vh] rounded-lg bg-white" />
+              ) : (
+                <div className="text-center space-y-3 py-10">
+                  <div className="text-5xl">{FILE_ICONS[ext(preview.doc.file_name)] ?? "📄"}</div>
+                  <p className="text-sm text-muted-foreground">
+                    هذه الصيغة ({ext(preview.doc.file_name).toUpperCase()}) لا تُعرض داخل المتصفح — حمّلها لفتحها في البرنامج المناسب.
+                  </p>
+                  <Button onClick={() => openDoc(preview.doc)}><Download className="h-4 w-4" /> تحميل الملف</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <input ref={versionInput} type="file" accept={ACCEPT} className="hidden" onChange={onNewVersion} />
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex items-center justify-between gap-3">
