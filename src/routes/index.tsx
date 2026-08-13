@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Languages, Plus, Save, Printer, FileDown, Trash2,
-  LogOut, FileText, LogIn, FolderOpen, Sparkles, Settings as SettingsIcon,
+  LogOut, FileText, LogIn, UserPlus, FolderOpen, Sparkles, Settings as SettingsIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
