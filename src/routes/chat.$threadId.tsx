@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, Sparkles, User, Printer, Save } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
+import { PrintReport } from "@/components/PrintReport";
 import { CATEGORY_LABELS } from "@/lib/departments";
 import { toast } from "sonner";
 
@@ -73,6 +74,13 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
 
   const isBusy = status === "submitted" || status === "streaming";
   const reportTitle = getText(messages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).slice(0, 80);
+  const deptLabel = CATEGORY_LABELS[category ?? ""] ?? "المساعد الذكي";
+  const printMeta = [
+    { label: "القسم", value: deptLabel },
+    { label: "المنتج / الموضوع", value: reportTitle || "—" },
+    { label: "التاريخ", value: new Date().toLocaleString("ar-EG") },
+    { label: "عدد العناصر", value: String(messages.length) },
+  ];
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -88,6 +96,19 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {/* Standalone full-length print layout (outside every scroll container). */}
+      <PrintReport title={`تقرير — ${deptLabel}`} meta={printMeta}>
+        {messages.map((m) => (
+          <section key={`p-${m.id}`} className="print-block">
+            <div className="print-block-label">{m.role === "user" ? "السؤال:" : "التقرير:"}</div>
+            {m.role === "user" ? (
+              <p style={{ whiteSpace: "pre-wrap" }}>{getText(m)}</p>
+            ) : (
+              <MarkdownView>{getText(m)}</MarkdownView>
+            )}
+          </section>
+        ))}
+      </PrintReport>
       <div className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-card/50 print:hidden">
         <div className="text-xs text-muted-foreground">
           💾 كل بحث يُحفظ تلقائيًا في قاعدة بياناتك
