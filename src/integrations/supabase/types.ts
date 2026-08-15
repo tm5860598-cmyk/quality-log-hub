@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      batch_materials: {
+        Row: {
+          batch_id: string
+          created_at: string
+          created_by: string
+          id: string
+          material_name: string
+          quantity: number | null
+          raw_material_id: string | null
+          supplier_batch: string | null
+          supplier_id: string | null
+          unit: string | null
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          material_name: string
+          quantity?: number | null
+          raw_material_id?: string | null
+          supplier_batch?: string | null
+          supplier_id?: string | null
+          unit?: string | null
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          material_name?: string
+          quantity?: number | null
+          raw_material_id?: string | null
+          supplier_batch?: string | null
+          supplier_id?: string | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_materials_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "qc_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_materials_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_materials_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capa_actions: {
         Row: {
           action_type: string
@@ -209,6 +270,7 @@ export type Database = {
           created_at: string
           doc_group_id: string | null
           error_message: string | null
+          expires_at: string | null
           file_name: string
           file_size: number | null
           file_type: string
@@ -230,6 +292,7 @@ export type Database = {
           created_at?: string
           doc_group_id?: string | null
           error_message?: string | null
+          expires_at?: string | null
           file_name: string
           file_size?: number | null
           file_type: string
@@ -251,6 +314,7 @@ export type Database = {
           created_at?: string
           doc_group_id?: string | null
           error_message?: string | null
+          expires_at?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string
@@ -351,6 +415,97 @@ export type Database = {
           },
         ]
       }
+      product_events: {
+        Row: {
+          actor_id: string | null
+          category: string | null
+          created_at: string
+          detail: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          product_id: string | null
+          ref_id: string | null
+          ref_table: string | null
+          title: string
+        }
+        Insert: {
+          actor_id?: string | null
+          category?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          product_id?: string | null
+          ref_id?: string | null
+          ref_table?: string | null
+          title: string
+        }
+        Update: {
+          actor_id?: string | null
+          category?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          product_id?: string | null
+          ref_id?: string | null
+          ref_table?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_versions: {
+        Row: {
+          category: string
+          change_note: string | null
+          created_at: string
+          created_by: string
+          id: string
+          product_id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          category: string
+          change_note?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          product_id: string
+          snapshot?: Json
+          version?: number
+        }
+        Update: {
+          category?: string
+          change_note?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          product_id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_versions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           base_quantity: number
@@ -432,6 +587,286 @@ export type Database = {
         }
         Relationships: []
       }
+      qc_batches: {
+        Row: {
+          batch_number: string
+          category: string
+          created_at: string
+          created_by: string
+          expiry_date: string | null
+          id: string
+          notes: string | null
+          product_id: string | null
+          product_name: string | null
+          production_date: string | null
+          quantity: number | null
+          status: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          category: string
+          created_at?: string
+          created_by: string
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          production_date?: string | null
+          quantity?: number | null
+          status?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          category?: string
+          created_at?: string
+          created_by?: string
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          production_date?: string | null
+          quantity?: number | null
+          status?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_results: {
+        Row: {
+          batch_id: string | null
+          category: string
+          created_at: string
+          created_by: string
+          deviation_note: string | null
+          id: string
+          max_value: number | null
+          min_value: number | null
+          product_id: string | null
+          result: string
+          target_text: string | null
+          test_name: string
+          tested_at: string
+          unit: string | null
+          updated_at: string
+          value_numeric: number | null
+          value_text: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          category: string
+          created_at?: string
+          created_by: string
+          deviation_note?: string | null
+          id?: string
+          max_value?: number | null
+          min_value?: number | null
+          product_id?: string | null
+          result?: string
+          target_text?: string | null
+          test_name: string
+          tested_at?: string
+          unit?: string | null
+          updated_at?: string
+          value_numeric?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string
+          deviation_note?: string | null
+          id?: string
+          max_value?: number | null
+          min_value?: number | null
+          product_id?: string | null
+          result?: string
+          target_text?: string | null
+          test_name?: string
+          tested_at?: string
+          unit?: string | null
+          updated_at?: string
+          value_numeric?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_results_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "qc_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_results_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quality_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          batch_id: string | null
+          category: string | null
+          created_at: string
+          document_id: string | null
+          id: string
+          message: string | null
+          ncr_id: string | null
+          product_id: string | null
+          qc_result_id: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          batch_id?: string | null
+          category?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          message?: string | null
+          ncr_id?: string | null
+          product_id?: string | null
+          qc_result_id?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          batch_id?: string | null
+          category?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          message?: string | null
+          ncr_id?: string | null
+          product_id?: string | null
+          qc_result_id?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_alerts_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "qc_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_alerts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_alerts_ncr_id_fkey"
+            columns: ["ncr_id"]
+            isOneToOne: false
+            referencedRelation: "ncr_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_alerts_qc_result_id_fkey"
+            columns: ["qc_result_id"]
+            isOneToOne: false
+            referencedRelation: "qc_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raw_materials: {
+        Row: {
+          category: string | null
+          code: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          notes: string | null
+          shelf_life_days: number | null
+          spec: Json
+          supplier_id: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          notes?: string | null
+          shelf_life_days?: number | null
+          spec?: Json
+          supplier_id?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          shelf_life_days?: number | null
+          spec?: Json
+          supplier_id?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_materials_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           created_at: string
@@ -464,6 +899,51 @@ export type Database = {
           report_number?: number
           rows?: Json
           title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          code: string | null
+          contact: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          rating: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          contact?: string | null
+          created_at?: string
+          created_by: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          rating?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          contact?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          rating?: number | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -525,6 +1005,7 @@ export type Database = {
           title: string
         }[]
       }
+      product_quality_score: { Args: { _product_id: string }; Returns: number }
     }
     Enums: {
       app_role:
