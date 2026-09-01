@@ -187,6 +187,54 @@ export type Database = {
         }
         Relationships: []
       }
+      departments: {
+        Row: {
+          created_at: string
+          desc_ar: string
+          desc_en: string
+          emoji: string
+          gradient: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          key: string
+          sort_order: number
+          title_ar: string
+          title_en: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          desc_ar?: string
+          desc_en?: string
+          emoji?: string
+          gradient?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          key: string
+          sort_order?: number
+          title_ar: string
+          title_en?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          desc_ar?: string
+          desc_en?: string
+          emoji?: string
+          gradient?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          key?: string
+          sort_order?: number
+          title_ar?: string
+          title_en?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dept_permissions: {
         Row: {
           can_delete: boolean
