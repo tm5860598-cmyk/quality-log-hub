@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as NcrRouteImport } from './routes/ncr'
+import { Route as ManufacturingRouteImport } from './routes/manufacturing'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
@@ -28,6 +29,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const NcrRoute = NcrRouteImport.update({
   id: '/ncr',
   path: '/ncr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManufacturingRoute = ManufacturingRouteImport.update({
+  id: '/manufacturing',
+  path: '/manufacturing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -74,6 +80,7 @@ const ApiChatRoute = ApiChatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chat'
+    | '/manufacturing'
     | '/ncr'
     | '/settings'
     | '/api/chat'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/manufacturing'
     | '/ncr'
     | '/settings'
     | '/api/chat'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/chat'
+    | '/manufacturing'
     | '/ncr'
     | '/settings'
     | '/api/chat'
@@ -148,6 +160,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRouteWithChildren
+  ManufacturingRoute: typeof ManufacturingRoute
   NcrRoute: typeof NcrRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -170,6 +183,13 @@ declare module '@tanstack/react-router' {
       path: '/ncr'
       fullPath: '/ncr'
       preLoaderRoute: typeof NcrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manufacturing': {
+      id: '/manufacturing'
+      path: '/manufacturing'
+      fullPath: '/manufacturing'
+      preLoaderRoute: typeof ManufacturingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -246,6 +266,7 @@ const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRouteWithChildren,
+  ManufacturingRoute: ManufacturingRoute,
   NcrRoute: NcrRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
