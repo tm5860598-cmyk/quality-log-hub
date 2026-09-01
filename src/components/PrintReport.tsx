@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useAuth } from "@/lib/auth-context";
+
 
 /**
  * Renders a standalone, full-length print layout into document.body.
