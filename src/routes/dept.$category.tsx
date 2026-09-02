@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
-import { DEPT_MAP } from "@/lib/departments";
+import { useDepartment } from "@/lib/departments";
 import { ArrowRight, Boxes, FileText, Sparkles, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/dept/$category")({
@@ -15,7 +15,7 @@ function DeptPage() {
   const { category } = Route.useParams();
   const { status } = useAuth();
   const { can, loading: permLoading } = useDeptPermissions();
-  const dept = DEPT_MAP[category];
+  const { dept, loading: deptLoading } = useDepartment(category);
   const [stats, setStats] = useState({ products: 0, documents: 0, updated: "" });
 
   useEffect(() => {
@@ -34,10 +34,10 @@ function DeptPage() {
     })();
   }, [category, status]);
 
-  if (permLoading) {
+  if (permLoading || deptLoading) {
     return <div className="min-h-screen grid place-items-center text-muted-foreground">جاري التحقق من الصلاحيات...</div>;
   }
-  if (dept && !can(category).view) {
+  if (!can(category).view) {
     return (
       <div dir="rtl" className="min-h-screen grid place-items-center p-6 text-center bg-background">
         <div className="max-w-md space-y-3">
@@ -59,7 +59,9 @@ function DeptPage() {
 
   const cards = [
     { to: "/products/$category" as const, params: { category }, emoji: "📦", title: "المنتجات والحاسبة", desc: "مكتبة المنتجات والوصفات وحاسبة الخامات حسب الكمية المطلوبة", icon: Boxes },
-    { to: "/chat" as const, search: { category }, emoji: "🤖", title: "المساعد الذكي", desc: "بحث متخصص داخل مستندات ومنتجات القسم مع ذكر المصدر", icon: Sparkles },
+    { to: "/chat" as const, search: { category }, emoji: "💬", title: "الدردشة", desc: "بحث متخصص داخل مستندات ومنتجات القسم مع ذكر المصدر", icon: Sparkles },
+    { to: "/manufacturing" as const, search: { category }, emoji: "🏭", title: "التصنيع والحاسبة", desc: "الوصفات وإصداراتها، حساب التشغيلة، الفاقد والتكلفة — لهذا القسم فقط", icon: Boxes },
+    { to: "/quality-hub" as const, emoji: "📋", title: "الجودة والتقارير", desc: "التقارير والمراجع وسجلات عدم المطابقة", icon: FileText },
     { to: "/documents/$category" as const, params: { category }, emoji: "📄", title: "المستندات", desc: "رفع ملفات PDF / Word وربطها بالقسم والمنتج كقاعدة معرفة", icon: FileText },
   ];
 
@@ -96,7 +98,7 @@ function DeptPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((c) => (
             <Link
               key={c.title}
