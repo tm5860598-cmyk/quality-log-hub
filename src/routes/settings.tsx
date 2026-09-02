@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, Check } from "lucide-react";
-import { DEPARTMENTS } from "@/lib/departments";
+import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, Check, LayoutGrid, Plus } from "lucide-react";
+import { useDepartments, type Department } from "@/lib/departments";
 import { ROLE_OPTIONS, roleLabel } from "@/lib/roles";
 import { applyTheme, readTheme, THEMES, type ThemeMode } from "@/lib/theme";
 import { MANAGER_ROLES } from "@/lib/permissions";
@@ -29,18 +29,14 @@ export const Route = createFileRoute("/settings")({
   }),
 });
 
-const PERM_CATEGORIES = [
-  ...DEPARTMENTS.map((d) => ({ key: d.key, label: `${d.emoji} ${d.title_ar}` })),
-  { key: "quality-reports", label: "📋 تقارير الجودة" },
-];
-
 type AppUser = { id: string; username: string; job_title: string | null; role: string };
 type PermRow = { view: boolean; upload: boolean; edit: boolean; delete: boolean };
 
 function SettingsPage() {
   const { status, role } = useAuth();
   const isManager = MANAGER_ROLES.includes(role);
-  const [tab, setTab] = useState<"theme" | "users" | "perms">("theme");
+  const [tab, setTab] = useState<"theme" | "users" | "perms" | "depts">("theme");
+  const isOwner = role === "owner";
 
   if (status === "loading") {
     return <div className="min-h-screen grid place-items-center text-muted-foreground">جاري التحميل...</div>;
@@ -76,11 +72,15 @@ function SettingsPage() {
               <TabBtn active={tab === "perms"} onClick={() => setTab("perms")} icon={<ShieldCheck className="size-4" />}>الصلاحيات</TabBtn>
             </>
           )}
+          {isOwner && (
+            <TabBtn active={tab === "depts"} onClick={() => setTab("depts")} icon={<LayoutGrid className="size-4" />}>إدارة الأقسام</TabBtn>
+          )}
         </div>
 
         {tab === "theme" && <AppearanceSection />}
         {tab === "users" && isManager && <UsersSection callerRole={role} />}
         {tab === "perms" && isManager && <PermissionsSection callerRole={role} />}
+        {tab === "depts" && isOwner && <DepartmentsSection />}
       </div>
     </div>
   );
@@ -309,6 +309,10 @@ function UsersSection({ callerRole }: { callerRole: string }) {
 
 function PermissionsSection({ callerRole }: { callerRole: string }) {
   const { users } = useUsers();
+  const { departments } = useDepartments();
+  const permCategories = departments
+    .filter((d) => d.is_active !== false)
+    .map((d) => ({ key: d.key, label: `${d.emoji} ${d.title_ar}` }));
   const save = useServerFn(setDeptPermissions);
   const [selected, setSelected] = useState<string>("");
   const [matrix, setMatrix] = useState<Record<string, PermRow>>({});
@@ -325,13 +329,13 @@ function PermissionsSection({ callerRole }: { callerRole: string }) {
         .select("category, can_view, can_upload, can_edit, can_delete")
         .eq("user_id", selected);
       const next: Record<string, PermRow> = {};
-      for (const c of PERM_CATEGORIES) next[c.key] = { view: false, upload: false, edit: false, delete: false };
+      for (const c of permCategories) next[c.key] = { view: false, upload: false, edit: false, delete: false };
       for (const r of data ?? []) {
         next[r.category] = { view: !!r.can_view, upload: !!r.can_upload, edit: !!r.can_edit, delete: !!r.can_delete };
       }
       setMatrix(next);
     })();
-  }, [selected]);
+  }, [selected, departments.length]);
 
   const toggle = (cat: string, key: keyof PermRow) =>
     setMatrix((m) => ({ ...m, [cat]: { ...m[cat], [key]: !m[cat]?.[key] } }));
@@ -343,7 +347,7 @@ function PermissionsSection({ callerRole }: { callerRole: string }) {
       await save({
         data: {
           userId: selected,
-          permissions: PERM_CATEGORIES.map((c) => ({
+          permissions: permCategories.map((c) => ({
             category: c.key,
             view: !!matrix[c.key]?.view,
             upload: !!matrix[c.key]?.upload,
@@ -390,7 +394,7 @@ function PermissionsSection({ callerRole }: { callerRole: string }) {
                 </tr>
               </thead>
               <tbody>
-                {PERM_CATEGORIES.map((c) => (
+                {permCategories.map((c) => (
                   <tr key={c.key} className="border-b last:border-0">
                     <td className="py-2 font-medium">{c.label}</td>
                     {(["view", "upload", "edit", "delete"] as const).map((k) => (
