@@ -14,10 +14,15 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
+import { useWorkspaceDepartments, QUALITY_HUB_KEY } from "@/lib/departments";
+import { PrintedBy } from "@/components/PrintReport";
 
 export const Route = createFileRoute("/")({
   ssr: false,
   component: Index,
+  validateSearch: (s: Record<string, unknown>) => ({
+    view: s.view === "reports" || s.view === "editor" ? (s.view as "reports" | "editor") : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "My Favourite Project | تقارير الجودة" },
@@ -204,7 +209,14 @@ function AppScreen({
   lang: Lang; setLang: (l: Lang) => void; t: typeof T["ar"]; dir: "ltr" | "rtl";
   username: string; role: "owner" | "user";
 }) {
-  const [tab, setTab] = useState<"hub" | "editor" | "list">("hub");
+  const { view } = Route.useSearch();
+  const [tab, setTab] = useState<"hub" | "editor" | "list">(
+    view === "reports" ? "list" : view === "editor" ? "editor" : "hub",
+  );
+  useEffect(() => {
+    if (view === "reports") setTab("list");
+    else if (view === "editor") setTab("editor");
+  }, [view]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reportNumber, setReportNumber] = useState<number | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -315,7 +327,7 @@ function AppScreen({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild size="sm" className="bg-gradient-to-r from-primary to-accent text-primary-foreground">
-              <Link to="/chat"><Sparkles className="size-4" /> {lang === "ar" ? "المساعد الذكي" : "AI Chat"}</Link>
+              <Link to="/chat"><Sparkles className="size-4" /> {lang === "ar" ? "الدردشة" : "Chat"}</Link>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
               <Languages className="size-4" /> {t.lang}
@@ -489,6 +501,9 @@ function EditorView(props: {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="hidden print:block">
+          <PrintedBy />
         </div>
       </div>
     </>
