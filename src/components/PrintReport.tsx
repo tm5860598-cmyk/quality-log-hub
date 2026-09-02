@@ -19,6 +19,7 @@ export function PrintReport({
   children: ReactNode;
 }) {
   const [mounted, setMounted] = useState(false);
+  const { username } = useAuth();
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
 
@@ -40,8 +41,24 @@ export function PrintReport({
         )}
       </header>
       <main className="print-report-body rich-content">{children}</main>
+      <PrintedBy username={username} />
       <footer className="print-report-foot">My Favourite Project — تقرير مطبوع آليًا</footer>
     </div>,
     document.body,
   );
 }
+
+/**
+ * Automatic sign-off block appended to the end of the last printed page.
+ * The name comes from the signed-in account — never typed by hand.
+ */
+export function PrintedBy({ username }: { username?: string }) {
+  return (
+    <div className="print-signature">
+      تمت الطباعة بواسطة: <strong>{username || "مستخدم غير معروف"}</strong>
+      {" — "}
+      {new Date().toLocaleString("ar-EG")}
+    </div>
+  );
+}
+
