@@ -53,9 +53,11 @@ export function PrintReport({
  * The name comes from the signed-in account — never typed by hand.
  */
 export function PrintedBy({ username }: { username?: string }) {
+  const { username: current } = useAuth();
+  const name = username || current;
   return (
     <div className="print-signature">
-      تمت الطباعة بواسطة: <strong>{username || "مستخدم غير معروف"}</strong>
+      تمت الطباعة بواسطة: <strong>{name || "مستخدم غير معروف"}</strong>
       {" — "}
       {new Date().toLocaleString("ar-EG")}
     </div>
