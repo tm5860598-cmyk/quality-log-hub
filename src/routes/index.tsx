@@ -14,10 +14,15 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
+import { useWorkspaceDepartments, QUALITY_HUB_KEY } from "@/lib/departments";
+import { PrintedBy } from "@/components/PrintReport";
 
 export const Route = createFileRoute("/")({
   ssr: false,
   component: Index,
+  validateSearch: (s: Record<string, unknown>) => ({
+    view: s.view === "reports" || s.view === "editor" ? (s.view as "reports" | "editor") : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "My Favourite Project | تقارير الجودة" },
@@ -204,7 +209,14 @@ function AppScreen({
   lang: Lang; setLang: (l: Lang) => void; t: typeof T["ar"]; dir: "ltr" | "rtl";
   username: string; role: "owner" | "user";
 }) {
-  const [tab, setTab] = useState<"hub" | "editor" | "list">("hub");
+  const { view } = Route.useSearch();
+  const [tab, setTab] = useState<"hub" | "editor" | "list">(
+    view === "reports" ? "list" : view === "editor" ? "editor" : "hub",
+  );
+  useEffect(() => {
+    if (view === "reports") setTab("list");
+    else if (view === "editor") setTab("editor");
+  }, [view]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reportNumber, setReportNumber] = useState<number | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -315,7 +327,7 @@ function AppScreen({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild size="sm" className="bg-gradient-to-r from-primary to-accent text-primary-foreground">
-              <Link to="/chat"><Sparkles className="size-4" /> {lang === "ar" ? "المساعد الذكي" : "AI Chat"}</Link>
+              <Link to="/chat"><Sparkles className="size-4" /> {lang === "ar" ? "الدردشة" : "Chat"}</Link>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
               <Languages className="size-4" /> {t.lang}
@@ -490,6 +502,9 @@ function EditorView(props: {
             </tbody>
           </table>
         </div>
+        <div className="hidden print:block">
+          <PrintedBy />
+        </div>
       </div>
     </>
   );
@@ -534,6 +549,7 @@ function ReportsList({
 function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const { can } = useDeptPermissions();
+  const { departments } = useWorkspaceDepartments();
   const tiles: Array<{
     key: string;
     title: string;
@@ -546,10 +562,10 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
   }> = [
     {
       key: "reports",
-      title: t("تقارير الجودة", "Quality Reports"),
+      title: t("تقرير جديد", "New Report"),
       desc: t("إنشاء وحفظ تقارير المشاكل والإجراءات", "Create and save inspection reports"),
       gradient: "from-indigo-500 to-sky-500",
-      emoji: "📋",
+      emoji: "🗒️",
       onClick: onNewReport,
     },
     {
@@ -560,55 +576,17 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
       emoji: "⚠️",
       href: "/ncr",
     },
-    {
-      key: "juice-production",
-      title: t("إنتاج العصائر", "Juice Production"),
-      desc: t("طرق تشغيل ووصفات العصائر بمعايير NFSA", "Juice recipes & NFSA-grade processes"),
-      gradient: "from-orange-500 to-rose-500",
-      emoji: "🥤",
-      category: "juice-production", href: "/chat",
-    },
-    {
-      key: "juice-quality",
-      title: t("جودة العصائر", "Juice Quality"),
-      desc: t("جميع اختبارات المعمل وصالة الإنتاج", "All lab & floor QC tests"),
-      gradient: "from-rose-500 to-fuchsia-500",
-      emoji: "🧪",
-      category: "juice-quality", href: "/chat",
-    },
-    {
-      key: "dairy-production",
-      title: t("إنتاج الألبان", "Dairy Production"),
-      desc: t("تصنيع اللبن والزبادي والجبن والمعدات", "Milk, yogurt, cheese processes & equipment"),
-      gradient: "from-sky-500 to-cyan-500",
-      emoji: "🥛",
-      category: "dairy-production", href: "/chat",
-    },
-    {
-      key: "dairy-quality",
-      title: t("جودة الألبان", "Dairy Quality"),
-      desc: t("تحاليل الدهن والبروتين والميكروبيولوجي", "Fat, protein, micro & residue tests"),
-      gradient: "from-cyan-500 to-teal-500",
-      emoji: "🔬",
-      category: "dairy-quality", href: "/chat",
-    },
-    {
-      key: "bakery-production",
-      title: t("إنتاج البيكري", "Bakery Production"),
-      desc: t("وصفات المخبوزات وخطوات الإنتاج", "Baker's percentages & production steps"),
-      gradient: "from-amber-500 to-orange-500",
-      emoji: "🥐",
-      category: "bakery-production", href: "/chat",
-    },
-    {
-      key: "bakery-quality",
-      title: t("جودة البيكري", "Bakery Quality"),
-      desc: t("تحاليل الجلوتين والرطوبة وأجهزة المعمل", "Gluten, moisture, rheology tests & lab kit"),
-      gradient: "from-yellow-500 to-amber-500",
-      emoji: "🧫",
-      category: "bakery-quality", href: "/chat",
-    },
+    ...departments.map((d) => ({
+      key: d.key,
+      title: lang === "ar" ? d.title_ar : d.title_en,
+      desc: lang === "ar" ? d.desc_ar : d.desc_en,
+      gradient: d.gradient,
+      emoji: d.emoji,
+      category: d.key,
+      ...(d.key === QUALITY_HUB_KEY ? { href: "/quality-hub" } : {}),
+    })),
   ];
+
 
   return (
     <div className="space-y-4">
@@ -655,6 +633,9 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
               </div>
             </div>
           );
+          if (tile.href) {
+            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
+          }
           if (tile.category) {
             return (
               <Link key={tile.key} to="/dept/$category" params={{ category: tile.category }} className="h-full block">
@@ -662,9 +643,7 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
               </Link>
             );
           }
-          if (tile.href) {
-            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
-          }
+
           return (
             <button key={tile.key} onClick={tile.onClick} className="text-start h-full">{inner}</button>
           );

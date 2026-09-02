@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as QualityHubRouteImport } from './routes/quality-hub'
 import { Route as NcrRouteImport } from './routes/ncr'
 import { Route as ManufacturingRouteImport } from './routes/manufacturing'
 import { Route as ChatRouteImport } from './routes/chat'
@@ -24,6 +25,11 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QualityHubRoute = QualityHubRouteImport.update({
+  id: '/quality-hub',
+  path: '/quality-hub',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NcrRoute = NcrRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRouteWithChildren
   '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
+  '/quality-hub': typeof QualityHubRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
+  '/quality-hub': typeof QualityHubRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/chat': typeof ChatRouteWithChildren
   '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
+  '/quality-hub': typeof QualityHubRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/manufacturing'
     | '/ncr'
+    | '/quality-hub'
     | '/settings'
     | '/api/chat'
     | '/chat/$threadId'
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
     | '/'
     | '/manufacturing'
     | '/ncr'
+    | '/quality-hub'
     | '/settings'
     | '/api/chat'
     | '/chat/$threadId'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/manufacturing'
     | '/ncr'
+    | '/quality-hub'
     | '/settings'
     | '/api/chat'
     | '/chat/$threadId'
@@ -162,6 +174,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   ManufacturingRoute: typeof ManufacturingRoute
   NcrRoute: typeof NcrRoute
+  QualityHubRoute: typeof QualityHubRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
   DeptCategoryRoute: typeof DeptCategoryRoute
@@ -176,6 +189,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quality-hub': {
+      id: '/quality-hub'
+      path: '/quality-hub'
+      fullPath: '/quality-hub'
+      preLoaderRoute: typeof QualityHubRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ncr': {
@@ -268,6 +288,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   ManufacturingRoute: ManufacturingRoute,
   NcrRoute: NcrRoute,
+  QualityHubRoute: QualityHubRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
   DeptCategoryRoute: DeptCategoryRoute,

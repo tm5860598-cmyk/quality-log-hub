@@ -11,17 +11,15 @@ import { BatchComparisonAnalysis } from "@/components/BatchComparisonAnalysis";
 import { ManufacturingConfiguration } from "@/components/ManufacturingConfiguration";
 import { AlertTriangle, Settings, Package, Calculator, Plus, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-
-const CATEGORIES = [
-  "juice-production",
-  "dairy-production",
-  "bakery-production",
-];
+import { useWorkspaceDepartments } from "@/lib/departments";
 
 function ManufacturingEngine() {
   const { user } = useAuth();
+  const { category: categoryParam } = Route.useSearch();
+  const { departments } = useWorkspaceDepartments();
+  const categories = departments.map((d) => d.key);
   const [products, setProducts] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0]);
+  const [selectedCategory, setSelectedCategory] = useState(categoryParam ?? "juice-production");
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [batches, setBatches] = useState<any[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<string>("");
@@ -76,6 +74,10 @@ function ManufacturingEngine() {
     loadBatches();
   }, [selectedProduct, selectedCategory]);
 
+  useEffect(() => {
+    if (categoryParam) setSelectedCategory(categoryParam);
+  }, [categoryParam]);
+
   const selectedProductData = products.find((p) => p.id === selectedProduct);
 
   return (
@@ -103,14 +105,14 @@ function ManufacturingEngine() {
 
         {/* Department Selection */}
         <div className="mb-6 flex gap-2 flex-wrap">
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <Button
               key={cat}
               variant={selectedCategory === cat ? "default" : "outline"}
               onClick={() => setSelectedCategory(cat)}
-              className="capitalize"
             >
-              {cat.split("-")[0]}
+              {departments.find((d) => d.key === cat)?.emoji}{" "}
+              {departments.find((d) => d.key === cat)?.title_ar ?? cat}
             </Button>
           ))}
         </div>
@@ -377,5 +379,19 @@ function ManufacturingEngine() {
 }
 
 export const Route = createFileRoute("/manufacturing")({
+  ssr: false,
   component: ManufacturingEngine,
+  validateSearch: (s: Record<string, unknown>) => ({
+    category: typeof s.category === "string" ? s.category : undefined,
+  }),
+  head: () => ({
+    meta: [
+      { title: "محرك التصنيع | My Favourite Project" },
+      { name: "description", content: "حساب التشغيلات وإدارة الوصفات وإصداراتها وتحليل الفاقد والتكلفة لكل قسم." },
+      { property: "og:title", content: "محرك التصنيع | My Favourite Project" },
+      { property: "og:description", content: "وصفات وإصدارات وحساب تشغيلات وتحليل انحرافات." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
