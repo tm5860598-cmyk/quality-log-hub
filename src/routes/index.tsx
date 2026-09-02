@@ -549,6 +549,7 @@ function ReportsList({
 function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const { can } = useDeptPermissions();
+  const { departments } = useWorkspaceDepartments();
   const tiles: Array<{
     key: string;
     title: string;
@@ -561,10 +562,10 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
   }> = [
     {
       key: "reports",
-      title: t("تقارير الجودة", "Quality Reports"),
+      title: t("تقرير جديد", "New Report"),
       desc: t("إنشاء وحفظ تقارير المشاكل والإجراءات", "Create and save inspection reports"),
       gradient: "from-indigo-500 to-sky-500",
-      emoji: "📋",
+      emoji: "🗒️",
       onClick: onNewReport,
     },
     {
@@ -575,55 +576,17 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
       emoji: "⚠️",
       href: "/ncr",
     },
-    {
-      key: "juice-production",
-      title: t("إنتاج العصائر", "Juice Production"),
-      desc: t("طرق تشغيل ووصفات العصائر بمعايير NFSA", "Juice recipes & NFSA-grade processes"),
-      gradient: "from-orange-500 to-rose-500",
-      emoji: "🥤",
-      category: "juice-production", href: "/chat",
-    },
-    {
-      key: "juice-quality",
-      title: t("جودة العصائر", "Juice Quality"),
-      desc: t("جميع اختبارات المعمل وصالة الإنتاج", "All lab & floor QC tests"),
-      gradient: "from-rose-500 to-fuchsia-500",
-      emoji: "🧪",
-      category: "juice-quality", href: "/chat",
-    },
-    {
-      key: "dairy-production",
-      title: t("إنتاج الألبان", "Dairy Production"),
-      desc: t("تصنيع اللبن والزبادي والجبن والمعدات", "Milk, yogurt, cheese processes & equipment"),
-      gradient: "from-sky-500 to-cyan-500",
-      emoji: "🥛",
-      category: "dairy-production", href: "/chat",
-    },
-    {
-      key: "dairy-quality",
-      title: t("جودة الألبان", "Dairy Quality"),
-      desc: t("تحاليل الدهن والبروتين والميكروبيولوجي", "Fat, protein, micro & residue tests"),
-      gradient: "from-cyan-500 to-teal-500",
-      emoji: "🔬",
-      category: "dairy-quality", href: "/chat",
-    },
-    {
-      key: "bakery-production",
-      title: t("إنتاج البيكري", "Bakery Production"),
-      desc: t("وصفات المخبوزات وخطوات الإنتاج", "Baker's percentages & production steps"),
-      gradient: "from-amber-500 to-orange-500",
-      emoji: "🥐",
-      category: "bakery-production", href: "/chat",
-    },
-    {
-      key: "bakery-quality",
-      title: t("جودة البيكري", "Bakery Quality"),
-      desc: t("تحاليل الجلوتين والرطوبة وأجهزة المعمل", "Gluten, moisture, rheology tests & lab kit"),
-      gradient: "from-yellow-500 to-amber-500",
-      emoji: "🧫",
-      category: "bakery-quality", href: "/chat",
-    },
+    ...departments.map((d) => ({
+      key: d.key,
+      title: lang === "ar" ? d.title_ar : d.title_en,
+      desc: lang === "ar" ? d.desc_ar : d.desc_en,
+      gradient: d.gradient,
+      emoji: d.emoji,
+      category: d.key,
+      ...(d.key === QUALITY_HUB_KEY ? { href: "/quality-hub" } : {}),
+    })),
   ];
+
 
   return (
     <div className="space-y-4">
