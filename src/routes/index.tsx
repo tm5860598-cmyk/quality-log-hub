@@ -633,6 +633,9 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
               </div>
             </div>
           );
+          if (tile.href) {
+            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
+          }
           if (tile.category) {
             return (
               <Link key={tile.key} to="/dept/$category" params={{ category: tile.category }} className="h-full block">
@@ -640,9 +643,7 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
               </Link>
             );
           }
-          if (tile.href) {
-            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
-          }
+
           return (
             <button key={tile.key} onClick={tile.onClick} className="text-start h-full">{inner}</button>
           );
