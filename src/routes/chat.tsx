@@ -6,18 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Plus, MessageSquare, Trash2, ArrowLeft, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useDepartments } from "@/lib/departments";
 
 type Thread = { id: string; title: string; updated_at: string; category: string };
 
+/** Fallback labels; live labels come from the departments table. */
 export const CATEGORIES: Record<string, { label: string; emoji: string }> = {
-  general: { label: "المساعد العام", emoji: "✨" },
-  "quality-reports": { label: "تقارير الجودة", emoji: "📋" },
-  "juice-production": { label: "إنتاج العصائر", emoji: "🥤" },
-  "juice-quality": { label: "جودة العصائر", emoji: "🧪" },
-  "dairy-production": { label: "إنتاج الألبان", emoji: "🥛" },
-  "dairy-quality": { label: "جودة الألبان", emoji: "🔬" },
-  "bakery-production": { label: "إنتاج البيكري", emoji: "🥐" },
-  "bakery-quality": { label: "جودة البيكري", emoji: "🧫" },
+  general: { label: "الدردشة العامة", emoji: "✨" },
 };
 
 const searchSchema = z.object({ category: z.string().optional() });
@@ -40,8 +35,15 @@ function ChatLayout() {
   const params = useParams({ strict: false }) as { threadId?: string };
   const search = useSearch({ from: "/chat" }) as { category?: string };
   const activeId = params.threadId;
-  const category = search.category && CATEGORIES[search.category] ? search.category : "general";
-  const cat = CATEGORIES[category];
+  const { departments } = useDepartments();
+  const known = new Set(departments.map((d) => d.key));
+  const category = search.category && (known.has(search.category) || CATEGORIES[search.category])
+    ? search.category
+    : "general";
+  const dept = departments.find((d) => d.key === category);
+  const cat = dept
+    ? { label: dept.title_ar, emoji: dept.emoji }
+    : (CATEGORIES[category] ?? { label: "الدردشة", emoji: "💬" });
 
   const loadThreads = useCallback(async () => {
     if (!session) return;
