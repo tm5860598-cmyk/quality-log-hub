@@ -75,6 +75,69 @@ export type Database = {
           },
         ]
       }
+      calculation_history: {
+        Row: {
+          batch_size: number | null
+          batch_unit: string | null
+          calculation_result: Json
+          cost_per_unit: number | null
+          created_at: string
+          created_by: string
+          currency: string | null
+          department: string | null
+          expected_output: number | null
+          expected_output_unit: string | null
+          id: string
+          input_data: Json
+          product_id: string | null
+          recipe_id: string | null
+          recipe_version: number
+          total_cost: number | null
+          waste_loss: number | null
+          waste_loss_unit: string | null
+        }
+        Insert: {
+          batch_size?: number | null
+          batch_unit?: string | null
+          calculation_result?: Json
+          cost_per_unit?: number | null
+          created_at?: string
+          created_by: string
+          currency?: string | null
+          department?: string | null
+          expected_output?: number | null
+          expected_output_unit?: string | null
+          id?: string
+          input_data?: Json
+          product_id?: string | null
+          recipe_id?: string | null
+          recipe_version?: number
+          total_cost?: number | null
+          waste_loss?: number | null
+          waste_loss_unit?: string | null
+        }
+        Update: {
+          batch_size?: number | null
+          batch_unit?: string | null
+          calculation_result?: Json
+          cost_per_unit?: number | null
+          created_at?: string
+          created_by?: string
+          currency?: string | null
+          department?: string | null
+          expected_output?: number | null
+          expected_output_unit?: string | null
+          id?: string
+          input_data?: Json
+          product_id?: string | null
+          recipe_id?: string | null
+          recipe_version?: number
+          total_cost?: number | null
+          waste_loss?: number | null
+          waste_loss_unit?: string | null
+        }
+        Relationships: []
+      }
       capa_actions: {
         Row: {
           action_type: string
@@ -184,6 +247,42 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      cost_data: {
+        Row: {
+          cost_per_unit: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          department: string | null
+          id: string
+          material_name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          cost_per_unit?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          department?: string | null
+          id?: string
+          material_name: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          cost_per_unit?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          department?: string | null
+          id?: string
+          material_name?: string
+          unit?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -385,6 +484,132 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manufacturing_parameters: {
+        Row: {
+          batch_size_unit: string | null
+          created_at: string
+          created_by: string | null
+          default_waste_percent: number
+          department: string
+          id: string
+          max_batch_size: number | null
+          min_batch_size: number | null
+          updated_at: string
+        }
+        Insert: {
+          batch_size_unit?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_waste_percent?: number
+          department: string
+          id?: string
+          max_batch_size?: number | null
+          min_batch_size?: number | null
+          updated_at?: string
+        }
+        Update: {
+          batch_size_unit?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_waste_percent?: number
+          department?: string
+          id?: string
+          max_batch_size?: number | null
+          min_batch_size?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      material_density: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          density_value: number
+          department: string | null
+          from_unit: string
+          id: string
+          material_name: string
+          to_unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          density_value?: number
+          department?: string | null
+          from_unit: string
+          id?: string
+          material_name: string
+          to_unit: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          density_value?: number
+          department?: string | null
+          from_unit?: string
+          id?: string
+          material_name?: string
+          to_unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      material_substitution: {
+        Row: {
+          conversion_factor: number
+          created_at: string
+          created_by: string | null
+          department: string | null
+          id: string
+          is_approved: boolean
+          primary_material_id: string
+          quality_notes: string | null
+          substitute_material_id: string
+          updated_at: string
+        }
+        Insert: {
+          conversion_factor?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          is_approved?: boolean
+          primary_material_id: string
+          quality_notes?: string | null
+          substitute_material_id: string
+          updated_at?: string
+        }
+        Update: {
+          conversion_factor?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          is_approved?: boolean
+          primary_material_id?: string
+          quality_notes?: string | null
+          substitute_material_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_substitution_primary_material_id_fkey"
+            columns: ["primary_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_substitution_substitute_material_id_fkey"
+            columns: ["substitute_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
             referencedColumns: ["id"]
           },
         ]
@@ -915,6 +1140,116 @@ export type Database = {
           },
         ]
       }
+      recipe_versions: {
+        Row: {
+          change_note: string | null
+          created_at: string
+          created_by: string
+          current_recipe: Json
+          id: string
+          product_id: string | null
+          recipe_id: string
+          version: number
+        }
+        Insert: {
+          change_note?: string | null
+          created_at?: string
+          created_by: string
+          current_recipe?: Json
+          id?: string
+          product_id?: string | null
+          recipe_id: string
+          version?: number
+        }
+        Update: {
+          change_note?: string | null
+          created_at?: string
+          created_by?: string
+          current_recipe?: Json
+          id?: string
+          product_id?: string | null
+          recipe_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_versions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_versions_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          base_quantity: number
+          base_unit: string
+          created_at: string
+          created_by: string
+          department: string
+          id: string
+          ingredients: Json
+          notes: string | null
+          parameters: Json
+          product_id: string | null
+          recipe_name: string
+          status: string
+          steps: Json
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          base_quantity?: number
+          base_unit?: string
+          created_at?: string
+          created_by: string
+          department: string
+          id?: string
+          ingredients?: Json
+          notes?: string | null
+          parameters?: Json
+          product_id?: string | null
+          recipe_name: string
+          status?: string
+          steps?: Json
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          base_quantity?: number
+          base_unit?: string
+          created_at?: string
+          created_by?: string
+          department?: string
+          id?: string
+          ingredients?: Json
+          notes?: string | null
+          parameters?: Json
+          product_id?: string | null
+          recipe_name?: string
+          status?: string
+          steps?: Json
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           created_at: string
@@ -992,6 +1327,42 @@ export type Database = {
           phone?: string | null
           rating?: number | null
           status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      unit_conversions: {
+        Row: {
+          base_unit: string
+          conversion_factor: number
+          created_at: string
+          created_by: string | null
+          department: string | null
+          from_unit: string
+          id: string
+          to_unit: string
+          updated_at: string
+        }
+        Insert: {
+          base_unit?: string
+          conversion_factor?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          from_unit: string
+          id?: string
+          to_unit: string
+          updated_at?: string
+        }
+        Update: {
+          base_unit?: string
+          conversion_factor?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          from_unit?: string
+          id?: string
+          to_unit?: string
           updated_at?: string
         }
         Relationships: []
@@ -1083,12 +1454,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1112,11 +1483,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1137,11 +1508,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1162,11 +1533,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1179,11 +1550,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

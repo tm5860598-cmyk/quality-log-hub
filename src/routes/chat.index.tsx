@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES } from "./chat";
+import { useDepartments } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -13,8 +14,15 @@ export const Route = createFileRoute("/chat/")({
 function ChatIndex() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/chat" }) as { category?: string };
-  const category = search.category && CATEGORIES[search.category] ? search.category : "general";
-  const cat = CATEGORIES[category];
+  const { departments } = useDepartments();
+  const known = new Set(departments.map((d) => d.key));
+  const category = search.category && (known.has(search.category) || CATEGORIES[search.category])
+    ? search.category
+    : "general";
+  const dept = departments.find((d) => d.key === category);
+  const cat = dept
+    ? { label: dept.title_ar, emoji: dept.emoji }
+    : (CATEGORIES[category] ?? { label: "الدردشة", emoji: "💬" });
   const { session, status } = useAuth();
   const started = useRef(false);
 

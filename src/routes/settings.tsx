@@ -414,3 +414,187 @@ function PermissionsSection({ callerRole }: { callerRole: string }) {
     </div>
   );
 }
+
+/* --------------------------- Departments section -------------------------- */
+
+const GRADIENT_CHOICES = [
+  "from-orange-500 to-rose-500",
+  "from-rose-500 to-fuchsia-500",
+  "from-sky-500 to-cyan-500",
+  "from-cyan-500 to-teal-500",
+  "from-amber-500 to-orange-500",
+  "from-emerald-500 to-teal-600",
+  "from-indigo-500 to-violet-600",
+  "from-slate-500 to-slate-700",
+];
+
+const slugify = (v: string) =>
+  v.trim().toLowerCase().replace(/[^a-z0-9\u0621-\u064A]+/g, "-").replace(/^-+|-+$/g, "");
+
+/**
+ * Owner-only department manager. Every department created here automatically
+ * gets the full workspace structure (products, documents, chat, manufacturing,
+ * permissions) because all of those screens are driven by the department key.
+ */
+function DepartmentsSection() {
+  const { departments, reload } = useDepartments();
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({ key: "", title_ar: "", title_en: "", desc_ar: "", desc_en: "", emoji: "🏭", gradient: GRADIENT_CHOICES[0] });
+  const [editing, setEditing] = useState<Department | null>(null);
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    const key = slugify(form.key || form.title_en || form.title_ar);
+    if (!key || !form.title_ar.trim()) return toast.error("اكتب اسم القسم بالعربية على الأقل");
+    setBusy(true);
+    const maxOrder = Math.max(0, ...departments.map((d) => d.sort_order ?? 0));
+    const { error } = await supabase.from("departments").insert({
+      key,
+      title_ar: form.title_ar.trim(),
+      title_en: form.title_en.trim() || form.title_ar.trim(),
+      desc_ar: form.desc_ar.trim(),
+      desc_en: form.desc_en.trim() || form.desc_ar.trim(),
+      emoji: form.emoji || "🏭",
+      gradient: form.gradient,
+      sort_order: maxOrder + 10,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("تم إضافة القسم بكل مكوناته (منتجات · مستندات · دردشة · تصنيع)");
+    setForm({ key: "", title_ar: "", title_en: "", desc_ar: "", desc_en: "", emoji: "🏭", gradient: GRADIENT_CHOICES[0] });
+    await reload();
+  };
+
+  const saveEdit = async () => {
+    if (!editing?.id) return;
+    setBusy(true);
+    const { error } = await supabase.from("departments").update({
+      title_ar: editing.title_ar,
+      title_en: editing.title_en,
+      desc_ar: editing.desc_ar,
+      desc_en: editing.desc_en,
+      emoji: editing.emoji,
+      gradient: editing.gradient,
+      is_active: editing.is_active !== false,
+    }).eq("id", editing.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("تم حفظ تعديلات القسم");
+    setEditing(null);
+    await reload();
+  };
+
+  const remove = async (d: Department) => {
+    if (!d.id) return;
+    if (d.is_system) return toast.error("هذا قسم أساسي في النظام — يمكن إخفاؤه فقط");
+    if (!confirm(`حذف قسم "${d.title_ar}"؟ ستبقى بياناته المحفوظة في قاعدة البيانات.`)) return;
+    setBusy(true);
+    const { error } = await supabase.from("departments").delete().eq("id", d.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("تم حذف القسم");
+    await reload();
+  };
+
+  const toggleActive = async (d: Department) => {
+    if (!d.id) return;
+    const { error } = await supabase.from("departments").update({ is_active: d.is_active === false }).eq("id", d.id);
+    if (error) return toast.error(error.message);
+    await reload();
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl bg-card border shadow-sm p-5">
+        <h2 className="font-bold flex items-center gap-2 mb-1"><Plus className="h-4 w-4" /> إضافة قسم جديد</h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          أي قسم جديد يظهر فورًا في الرئيسية ويحصل تلقائيًا على نفس الهيكل: المنتجات والحاسبة، المستندات، الدردشة الذكية،
+          محرك التصنيع، ومصفوفة الصلاحيات.
+        </p>
+        <form onSubmit={add} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><Label className="mb-1 block">الاسم بالعربية *</Label>
+              <Input value={form.title_ar} onChange={(e) => setForm({ ...form, title_ar: e.target.value })} placeholder="مثال: إنتاج الآيس كريم" /></div>
+            <div><Label className="mb-1 block">الاسم بالإنجليزية</Label>
+              <Input value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value })} placeholder="Ice Cream Production" /></div>
+            <div><Label className="mb-1 block">وصف مختصر (عربي)</Label>
+              <Input value={form.desc_ar} onChange={(e) => setForm({ ...form, desc_ar: e.target.value })} /></div>
+            <div><Label className="mb-1 block">Description (EN)</Label>
+              <Input value={form.desc_en} onChange={(e) => setForm({ ...form, desc_en: e.target.value })} /></div>
+            <div><Label className="mb-1 block">المُعرّف (اختياري)</Label>
+              <Input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} placeholder="icecream-production" /></div>
+            <div><Label className="mb-1 block">الأيقونة</Label>
+              <Input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} maxLength={4} /></div>
+          </div>
+          <div>
+            <Label className="mb-1 block">اللون</Label>
+            <div className="flex flex-wrap gap-2">
+              {GRADIENT_CHOICES.map((g) => (
+                <button type="button" key={g} onClick={() => setForm({ ...form, gradient: g })}
+                  className={`h-8 w-12 rounded-lg bg-gradient-to-br ${g} ${form.gradient === g ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                  aria-label={g} />
+              ))}
+            </div>
+          </div>
+          <Button type="submit" disabled={busy} className="w-full"><Plus className="size-4" /> إضافة القسم</Button>
+        </form>
+      </div>
+
+      <div className="rounded-2xl bg-card border shadow-sm p-5">
+        <h2 className="font-bold flex items-center gap-2 mb-4"><LayoutGrid className="h-4 w-4" /> الأقسام ({departments.length})</h2>
+        <div className="space-y-2">
+          {departments.map((d) => (
+            <div key={d.key} className="rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${d.gradient} text-lg text-white`}>{d.emoji}</span>
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{d.title_ar}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {d.key}{d.is_system ? " · أساسي" : ""}{d.is_active === false ? " · مخفي" : ""}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button size="sm" variant="outline" onClick={() => setEditing(d)}>تعديل</Button>
+                  <Button size="sm" variant="ghost" onClick={() => toggleActive(d)}>
+                    {d.is_active === false ? "إظهار" : "إخفاء"}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" disabled={busy || d.is_system} onClick={() => remove(d)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              {editing?.key === d.key && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 border-t pt-3">
+                  <div><Label className="mb-1 block text-xs">الاسم بالعربية</Label>
+                    <Input value={editing.title_ar} onChange={(e) => setEditing({ ...editing, title_ar: e.target.value })} /></div>
+                  <div><Label className="mb-1 block text-xs">الاسم بالإنجليزية</Label>
+                    <Input value={editing.title_en} onChange={(e) => setEditing({ ...editing, title_en: e.target.value })} /></div>
+                  <div><Label className="mb-1 block text-xs">وصف (عربي)</Label>
+                    <Input value={editing.desc_ar} onChange={(e) => setEditing({ ...editing, desc_ar: e.target.value })} /></div>
+                  <div><Label className="mb-1 block text-xs">الأيقونة</Label>
+                    <Input value={editing.emoji} maxLength={4} onChange={(e) => setEditing({ ...editing, emoji: e.target.value })} /></div>
+                  <div className="sm:col-span-2">
+                    <Label className="mb-1 block text-xs">اللون</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {GRADIENT_CHOICES.map((g) => (
+                        <button type="button" key={g} onClick={() => setEditing({ ...editing, gradient: g })}
+                          className={`h-7 w-10 rounded-md bg-gradient-to-br ${g} ${editing.gradient === g ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                          aria-label={g} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2 flex gap-2">
+                    <Button size="sm" disabled={busy} onClick={saveEdit}><Save className="size-4" /> حفظ</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>إلغاء</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

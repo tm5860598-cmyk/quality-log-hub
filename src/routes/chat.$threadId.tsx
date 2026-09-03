@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, Sparkles, User, Printer, Save } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
 import { PrintReport } from "@/components/PrintReport";
-import { CATEGORY_LABELS } from "@/lib/departments";
+import { useCategoryLabel } from "@/lib/departments";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$threadId")({
@@ -74,7 +74,7 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
 
   const isBusy = status === "submitted" || status === "streaming";
   const reportTitle = getText(messages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).slice(0, 80);
-  const deptLabel = CATEGORY_LABELS[category ?? ""] ?? "المساعد الذكي";
+  const deptLabel = useCategoryLabel(category) || "الدردشة";
   const printMeta = [
     { label: "القسم", value: deptLabel },
     { label: "المنتج / الموضوع", value: reportTitle || "—" },
@@ -125,7 +125,7 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-6 print:max-w-full">
           <div className="print-only mb-4 border-b pb-3">
-            <h1 className="text-xl font-extrabold">تقرير — {CATEGORY_LABELS[category ?? ""] ?? "المساعد الذكي"}</h1>
+            <h1 className="text-xl font-extrabold">تقرير — {deptLabel}</h1>
             <p className="text-xs">
               {reportTitle ? `الموضوع: ${reportTitle} — ` : ""}التاريخ: {new Date().toLocaleDateString("ar-EG")} — My Favourite Project
             </p>

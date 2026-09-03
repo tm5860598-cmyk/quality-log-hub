@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CATEGORY_LABELS } from "@/lib/departments";
+import { useCategoryLabel } from "@/lib/departments";
 import { ArrowRight, FileText, Trash2, Upload, Download, Sparkles, Search, RefreshCw, History, Eye, X } from "lucide-react";
 import { useDeptPermissions } from "@/lib/permissions";
 
@@ -55,6 +55,7 @@ function statusMeta(s: string) {
 
 function DocumentsPage() {
   const { category } = Route.useParams();
+  const deptLabel = useCategoryLabel(category);
   const { status: authStatus, userId } = useAuth();
   const { can, loading: permLoading } = useDeptPermissions();
   const perm = can(category);
@@ -334,7 +335,7 @@ function DocumentsPage() {
           <div>
             <h1 className="text-2xl font-extrabold flex items-center gap-2">
               <FileText className="h-6 w-6 text-primary" />
-              مستندات قسم {CATEGORY_LABELS[category] ?? category}
+              مستندات قسم {deptLabel}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               ارفع PDF و Word و Excel و PowerPoint و TXT و CSV والصور. يُحفظ الملف أولًا، وما يمكن قراءته نصيًا (PDF, Word, TXT, CSV) يُحلَّل ويدخل قاعدة معرفة القسم.
@@ -466,7 +467,7 @@ function DocumentsPage() {
         </div>
 
         <div className="rounded-2xl bg-primary text-primary-foreground p-5">
-          <p className="font-bold mb-1">💡 كيف يستخدمها المساعد الذكي؟</p>
+          <p className="font-bold mb-1">💡 كيف تستخدمها الدردشة الذكية؟</p>
           <p className="text-sm opacity-90">
             اكتب في محادثة القسم مثلًا: «عايز أعمل كرواسون» — سيبحث المساعد داخل مستندات هذا القسم ويستخرج الخامات والوصفة وخطوات التصنيع و Parameters و Quality Checks، مع ذكر اسم الملف ورقم الصفحة لكل معلومة.
           </p>

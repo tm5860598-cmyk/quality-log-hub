@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDepartment } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,7 +120,10 @@ export const Route = createFileRoute("/products/$category")({
 
 function ProductsPage() {
   const { category } = Route.useParams();
-  const meta = CATEGORIES[category];
+  const { dept } = useDepartment(category);
+  const meta = dept
+    ? { label: dept.title_ar, emoji: dept.emoji, gradient: dept.gradient }
+    : CATEGORIES[category];
   const { session, role: userRole, status } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
