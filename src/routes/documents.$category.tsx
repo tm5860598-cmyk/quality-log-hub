@@ -55,6 +55,7 @@ function statusMeta(s: string) {
 
 function DocumentsPage() {
   const { category } = Route.useParams();
+  const deptLabel = useCategoryLabel(category);
   const { status: authStatus, userId } = useAuth();
   const { can, loading: permLoading } = useDeptPermissions();
   const perm = can(category);
