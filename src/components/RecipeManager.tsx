@@ -39,7 +39,8 @@ interface RecipeManagerProps {
 }
 
 export function RecipeManager({ productId, department, productName }: RecipeManagerProps) {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const user = session?.user ?? null;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -153,7 +154,7 @@ export function RecipeManager({ productId, department, productName }: RecipeMana
         // Update existing
         const { error } = await supabase
           .from("recipes")
-          .update(recipeData)
+          .update(recipeData as never)
           .eq("id", formData.id);
 
         if (error) throw error;
@@ -166,7 +167,7 @@ export function RecipeManager({ productId, department, productName }: RecipeMana
             product_id: formData.product_id,
             version: formData.version,
             change_note: "Recipe updated",
-            current_recipe: recipeData,
+            current_recipe: recipeData as never,
             created_by: user.id,
           });
 
@@ -175,7 +176,7 @@ export function RecipeManager({ productId, department, productName }: RecipeMana
         // Create new
         const { data: newRecipe, error } = await supabase
           .from("recipes")
-          .insert(recipeData)
+          .insert(recipeData as never)
           .select()
           .single();
 

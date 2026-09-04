@@ -392,7 +392,7 @@ export async function calculateBatch(input: CalculationInput): Promise<Calculati
     ingredients: recipe.ingredients || [],
     steps: recipe.steps || [],
     parameters: recipe.parameters || {},
-  } as Recipe;
+  } as unknown as Recipe;
 
   // Validate recipe
   const recipeValidation = await validateRecipe(parsedRecipe);
@@ -530,8 +530,8 @@ export async function saveCalculation(
       input_data: {
         scaling_factor: calculation.scaling_factor,
         ingredients: calculation.scaled_ingredients,
-      },
-      calculation_result: calculation,
+      } as never,
+      calculation_result: calculation as never,
       expected_output: calculation.expected_output,
       expected_output_unit: calculation.expected_output_unit,
       waste_loss: calculation.waste_loss,
@@ -586,7 +586,7 @@ export async function createBatchFromCalculation(
       },
       notes: batchNotes || `Created from calculation on ${now.toISOString()}`,
       created_by: userId,
-    })
+    } as never)
     .select()
     .single();
 
@@ -680,7 +680,7 @@ export async function simulateManufacturing(
     expected_waste: yieldAnalysis.waste,
     expected_waste_unit: yieldAnalysis.wasteUnit,
     expected_cost: costCalc.total,
-    quality_parameters: params?.quality_params || {},
+    quality_parameters: (params?.quality_params ?? {}) as Record<string, unknown>,
     critical_points: criticalPoints,
   };
 }

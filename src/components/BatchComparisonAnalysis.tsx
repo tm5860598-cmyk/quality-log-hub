@@ -92,7 +92,7 @@ export function BatchComparisonAnalysis({ batchId }: BatchComparisonProps) {
           actual_output: actualOutput,
           actual_output_unit: batch.unit,
           waste_loss: actualWaste,
-          deviations: { analysis: devs },
+          deviations: { analysis: devs } as never,
           status: "completed",
         })
         .eq("id", batchId);
