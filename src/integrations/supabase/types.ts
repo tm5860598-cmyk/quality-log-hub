@@ -257,7 +257,9 @@ export type Database = {
           created_by: string | null
           currency: string
           department: string | null
+          effective_date: string
           id: string
+          material_id: string | null
           material_name: string
           unit: string
           updated_at: string
@@ -268,7 +270,9 @@ export type Database = {
           created_by?: string | null
           currency?: string
           department?: string | null
+          effective_date?: string
           id?: string
+          material_id?: string | null
           material_name: string
           unit?: string
           updated_at?: string
@@ -279,12 +283,22 @@ export type Database = {
           created_by?: string | null
           currency?: string
           department?: string | null
+          effective_date?: string
           id?: string
+          material_id?: string | null
           material_name?: string
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cost_data_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       departments: {
         Row: {
@@ -498,6 +512,8 @@ export type Database = {
           id: string
           max_batch_size: number | null
           min_batch_size: number | null
+          quality_params: Json
+          standard_process: Json
           updated_at: string
         }
         Insert: {
@@ -509,6 +525,8 @@ export type Database = {
           id?: string
           max_batch_size?: number | null
           min_batch_size?: number | null
+          quality_params?: Json
+          standard_process?: Json
           updated_at?: string
         }
         Update: {
@@ -520,6 +538,8 @@ export type Database = {
           id?: string
           max_batch_size?: number | null
           min_batch_size?: number | null
+          quality_params?: Json
+          standard_process?: Json
           updated_at?: string
         }
         Relationships: []
@@ -532,6 +552,7 @@ export type Database = {
           department: string | null
           from_unit: string
           id: string
+          material_id: string | null
           material_name: string
           to_unit: string
           updated_at: string
@@ -543,6 +564,7 @@ export type Database = {
           department?: string | null
           from_unit: string
           id?: string
+          material_id?: string | null
           material_name: string
           to_unit: string
           updated_at?: string
@@ -554,11 +576,20 @@ export type Database = {
           department?: string | null
           from_unit?: string
           id?: string
+          material_id?: string | null
           material_name?: string
           to_unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "material_density_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       material_substitution: {
         Row: {
@@ -862,10 +893,15 @@ export type Database = {
       }
       qc_batches: {
         Row: {
+          actual_output: number | null
+          actual_output_unit: string | null
           batch_number: string
           category: string
           created_at: string
           created_by: string
+          deviations: Json
+          expected_output: number | null
+          expected_output_unit: string | null
           expiry_date: string | null
           id: string
           notes: string | null
@@ -873,15 +909,22 @@ export type Database = {
           product_name: string | null
           production_date: string | null
           quantity: number | null
+          recipe_id: string | null
           status: string
           unit: string | null
           updated_at: string
+          waste_loss: number | null
         }
         Insert: {
+          actual_output?: number | null
+          actual_output_unit?: string | null
           batch_number: string
           category: string
           created_at?: string
           created_by: string
+          deviations?: Json
+          expected_output?: number | null
+          expected_output_unit?: string | null
           expiry_date?: string | null
           id?: string
           notes?: string | null
@@ -889,15 +932,22 @@ export type Database = {
           product_name?: string | null
           production_date?: string | null
           quantity?: number | null
+          recipe_id?: string | null
           status?: string
           unit?: string | null
           updated_at?: string
+          waste_loss?: number | null
         }
         Update: {
+          actual_output?: number | null
+          actual_output_unit?: string | null
           batch_number?: string
           category?: string
           created_at?: string
           created_by?: string
+          deviations?: Json
+          expected_output?: number | null
+          expected_output_unit?: string | null
           expiry_date?: string | null
           id?: string
           notes?: string | null
@@ -905,9 +955,11 @@ export type Database = {
           product_name?: string | null
           production_date?: string | null
           quantity?: number | null
+          recipe_id?: string | null
           status?: string
           unit?: string | null
           updated_at?: string
+          waste_loss?: number | null
         }
         Relationships: [
           {
@@ -915,6 +967,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_batches_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]
@@ -1201,6 +1260,7 @@ export type Database = {
           parameters: Json
           product_id: string | null
           recipe_name: string
+          specifications: Json
           status: string
           steps: Json
           updated_at: string
@@ -1218,6 +1278,7 @@ export type Database = {
           parameters?: Json
           product_id?: string | null
           recipe_name: string
+          specifications?: Json
           status?: string
           steps?: Json
           updated_at?: string
@@ -1235,6 +1296,7 @@ export type Database = {
           parameters?: Json
           product_id?: string | null
           recipe_name?: string
+          specifications?: Json
           status?: string
           steps?: Json
           updated_at?: string
