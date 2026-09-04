@@ -649,13 +649,6 @@ function HubView({ lang, username }: { lang: Lang; username?: string }) {
           );
         })}
       </div>
-      {onOpenReports && (
-        <div className="text-center">
-          <button onClick={onOpenReports} className="text-sm text-indigo-700 hover:underline">
-            {t("عرض التقارير المحفوظة", "View saved reports")}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
