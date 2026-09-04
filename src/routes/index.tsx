@@ -622,7 +622,7 @@ function HubView({ lang, username }: { lang: Lang; username?: string }) {
                 </div>
                 <div className="mt-auto pt-2">
                   <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${tile.gradient} bg-clip-text text-transparent`}>
-                    {tile.key === "reports" ? t("فتح التقارير", "Open reports") : t("فتح القسم", "Open department")}{" "}
+                    {tile.key === "manage-depts" ? t("فتح الإدارة", "Open manager") : t("فتح القسم", "Open department")}{" "}
                     <span aria-hidden>→</span>
                   </span>
                 </div>
