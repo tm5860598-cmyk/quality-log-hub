@@ -545,9 +545,10 @@ function ReportsList({
 }
 
 
-function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void; username?: string }) {
+function HubView({ lang, username }: { lang: Lang; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const { can } = useDeptPermissions();
+  const { role } = useAuth();
   const { departments } = useWorkspaceDepartments();
   const tiles: Array<{
     key: string;
@@ -557,24 +558,9 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
     emoji: string;
     onClick?: () => void;
     href?: string;
+    search?: Record<string, string>;
     category?: string;
   }> = [
-    {
-      key: "reports",
-      title: t("تقرير جديد", "New Report"),
-      desc: t("إنشاء وحفظ تقارير المشاكل والإجراءات", "Create and save inspection reports"),
-      gradient: "from-indigo-500 to-sky-500",
-      emoji: "🗒️",
-      onClick: onNewReport,
-    },
-    {
-      key: "ncr",
-      title: t("عدم المطابقة NCR / CAPA", "NCR / CAPA"),
-      desc: t("تسجيل ومتابعة حالات عدم المطابقة والإجراءات التصحيحية", "Log & track non-conformances and corrective actions"),
-      gradient: "from-rose-500 to-orange-500",
-      emoji: "⚠️",
-      href: "/ncr",
-    },
     ...departments.map((d) => ({
       key: d.key,
       title: lang === "ar" ? d.title_ar : d.title_en,
