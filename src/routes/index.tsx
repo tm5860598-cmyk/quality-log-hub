@@ -630,7 +630,11 @@ function HubView({ lang, username }: { lang: Lang; username?: string }) {
             </div>
           );
           if (tile.href) {
-            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
+            return (
+              <Link key={tile.key} to={tile.href as "/ncr"} search={tile.search as never} className="h-full block">
+                {inner}
+              </Link>
+            );
           }
           if (tile.category) {
             return (
