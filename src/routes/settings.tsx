@@ -14,9 +14,15 @@ import { applyTheme, readTheme, THEMES, type ThemeMode } from "@/lib/theme";
 import { MANAGER_ROLES } from "@/lib/permissions";
 import { createAppUser, updateAppUser, deleteAppUser, setDeptPermissions } from "@/lib/users.functions";
 
+type SettingsTab = "theme" | "users" | "perms" | "depts";
+
 export const Route = createFileRoute("/settings")({
   ssr: false,
   component: SettingsPage,
+  validateSearch: (s: Record<string, unknown>): { tab?: SettingsTab } =>
+    s.tab === "theme" || s.tab === "users" || s.tab === "perms" || s.tab === "depts"
+      ? { tab: s.tab }
+      : {},
   head: () => ({
     meta: [
       { title: "الإعدادات | My Favourite Project" },
