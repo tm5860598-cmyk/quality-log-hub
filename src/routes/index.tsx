@@ -570,6 +570,17 @@ function HubView({ lang, username }: { lang: Lang; username?: string }) {
       category: d.key,
       ...(d.key === QUALITY_HUB_KEY ? { href: "/quality-hub" } : {}),
     })),
+    ...(role === "owner"
+      ? [{
+          key: "manage-depts",
+          title: t("إدارة الأقسام", "Manage Departments"),
+          desc: t("إضافة أو تعديل أو تعطيل الأقسام وإنشاء مساحة عمل مستقلة لكل قسم", "Add, edit or disable departments — each gets its own workspace"),
+          gradient: "from-slate-600 to-slate-800",
+          emoji: "🧩",
+          href: "/settings",
+          search: { tab: "depts" },
+        }]
+      : []),
   ];
 
 
