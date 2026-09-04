@@ -545,9 +545,10 @@ function ReportsList({
 }
 
 
-function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; onOpenReports: () => void; onNewReport: () => void; username?: string }) {
+function HubView({ lang, username }: { lang: Lang; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const { can } = useDeptPermissions();
+  const { role } = useAuth();
   const { departments } = useWorkspaceDepartments();
   const tiles: Array<{
     key: string;
@@ -557,24 +558,9 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
     emoji: string;
     onClick?: () => void;
     href?: string;
+    search?: Record<string, string>;
     category?: string;
   }> = [
-    {
-      key: "reports",
-      title: t("تقرير جديد", "New Report"),
-      desc: t("إنشاء وحفظ تقارير المشاكل والإجراءات", "Create and save inspection reports"),
-      gradient: "from-indigo-500 to-sky-500",
-      emoji: "🗒️",
-      onClick: onNewReport,
-    },
-    {
-      key: "ncr",
-      title: t("عدم المطابقة NCR / CAPA", "NCR / CAPA"),
-      desc: t("تسجيل ومتابعة حالات عدم المطابقة والإجراءات التصحيحية", "Log & track non-conformances and corrective actions"),
-      gradient: "from-rose-500 to-orange-500",
-      emoji: "⚠️",
-      href: "/ncr",
-    },
     ...departments.map((d) => ({
       key: d.key,
       title: lang === "ar" ? d.title_ar : d.title_en,
@@ -584,6 +570,17 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
       category: d.key,
       ...(d.key === QUALITY_HUB_KEY ? { href: "/quality-hub" } : {}),
     })),
+    ...(role === "owner"
+      ? [{
+          key: "manage-depts",
+          title: t("إدارة الأقسام", "Manage Departments"),
+          desc: t("إضافة أو تعديل أو تعطيل الأقسام وإنشاء مساحة عمل مستقلة لكل قسم", "Add, edit or disable departments — each gets its own workspace"),
+          gradient: "from-slate-600 to-slate-800",
+          emoji: "🧩",
+          href: "/settings",
+          search: { tab: "depts" },
+        }]
+      : []),
   ];
 
 
@@ -625,7 +622,7 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
                 </div>
                 <div className="mt-auto pt-2">
                   <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${tile.gradient} bg-clip-text text-transparent`}>
-                    {tile.key === "reports" ? t("فتح التقارير", "Open reports") : t("فتح القسم", "Open department")}{" "}
+                    {tile.key === "manage-depts" ? t("فتح الإدارة", "Open manager") : t("فتح القسم", "Open department")}{" "}
                     <span aria-hidden>→</span>
                   </span>
                 </div>
@@ -633,7 +630,11 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
             </div>
           );
           if (tile.href) {
-            return <Link key={tile.key} to={tile.href as "/ncr"} className="h-full block">{inner}</Link>;
+            return (
+              <Link key={tile.key} to={tile.href as "/ncr"} search={tile.search as never} className="h-full block">
+                {inner}
+              </Link>
+            );
           }
           if (tile.category) {
             return (
@@ -648,13 +649,6 @@ function HubView({ lang, onOpenReports, onNewReport, username }: { lang: Lang; o
           );
         })}
       </div>
-      {onOpenReports && (
-        <div className="text-center">
-          <button onClick={onOpenReports} className="text-sm text-indigo-700 hover:underline">
-            {t("عرض التقارير المحفوظة", "View saved reports")}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -85,6 +85,7 @@ export type Database = {
           created_by: string
           currency: string | null
           department: string | null
+          department_id: string | null
           expected_output: number | null
           expected_output_unit: string | null
           id: string
@@ -105,6 +106,7 @@ export type Database = {
           created_by: string
           currency?: string | null
           department?: string | null
+          department_id?: string | null
           expected_output?: number | null
           expected_output_unit?: string | null
           id?: string
@@ -125,6 +127,7 @@ export type Database = {
           created_by?: string
           currency?: string | null
           department?: string | null
+          department_id?: string | null
           expected_output?: number | null
           expected_output_unit?: string | null
           id?: string
@@ -136,7 +139,15 @@ export type Database = {
           waste_loss?: number | null
           waste_loss_unit?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calculation_history_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       capa_actions: {
         Row: {
@@ -227,6 +238,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          department_id: string | null
           id: string
           title: string
           updated_at: string
@@ -235,6 +247,7 @@ export type Database = {
         Insert: {
           category?: string
           created_at?: string
+          department_id?: string | null
           id?: string
           title?: string
           updated_at?: string
@@ -243,12 +256,21 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          department_id?: string | null
           id?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_threads_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cost_data: {
         Row: {
@@ -390,6 +412,7 @@ export type Database = {
           chunk_index: number
           content: string
           created_at: string
+          department_id: string | null
           document_id: string
           embedding: string | null
           id: string
@@ -400,6 +423,7 @@ export type Database = {
           chunk_index?: number
           content: string
           created_at?: string
+          department_id?: string | null
           document_id: string
           embedding?: string | null
           id?: string
@@ -410,12 +434,20 @@ export type Database = {
           chunk_index?: number
           content?: string
           created_at?: string
+          department_id?: string | null
           document_id?: string
           embedding?: string | null
           id?: string
           page_number?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "document_chunks_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "document_chunks_document_id_fkey"
             columns: ["document_id"]
@@ -429,6 +461,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          department_id: string | null
           doc_group_id: string | null
           error_message: string | null
           expires_at: string | null
@@ -451,6 +484,7 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string
+          department_id?: string | null
           doc_group_id?: string | null
           error_message?: string | null
           expires_at?: string | null
@@ -473,6 +507,7 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          department_id?: string | null
           doc_group_id?: string | null
           error_message?: string | null
           expires_at?: string | null
@@ -493,6 +528,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_product_id_fkey"
             columns: ["product_id"]
@@ -652,6 +694,7 @@ export type Database = {
           category: string | null
           closed_at: string | null
           created_at: string
+          department_id: string | null
           description: string
           id: string
           immediate_action: string | null
@@ -673,6 +716,7 @@ export type Database = {
           category?: string | null
           closed_at?: string | null
           created_at?: string
+          department_id?: string | null
           description: string
           id?: string
           immediate_action?: string | null
@@ -694,6 +738,7 @@ export type Database = {
           category?: string | null
           closed_at?: string | null
           created_at?: string
+          department_id?: string | null
           description?: string
           id?: string
           immediate_action?: string | null
@@ -711,6 +756,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "ncr_reports_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ncr_reports_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -724,6 +776,7 @@ export type Database = {
           actor_id: string | null
           category: string | null
           created_at: string
+          department_id: string | null
           detail: string | null
           event_type: string
           id: string
@@ -737,6 +790,7 @@ export type Database = {
           actor_id?: string | null
           category?: string | null
           created_at?: string
+          department_id?: string | null
           detail?: string | null
           event_type: string
           id?: string
@@ -750,6 +804,7 @@ export type Database = {
           actor_id?: string | null
           category?: string | null
           created_at?: string
+          department_id?: string | null
           detail?: string | null
           event_type?: string
           id?: string
@@ -760,6 +815,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "product_events_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_events_product_id_fkey"
             columns: ["product_id"]
@@ -818,6 +880,7 @@ export type Database = {
           code: string | null
           created_at: string
           created_by: string
+          department_id: string | null
           description: string | null
           id: string
           image_url: string | null
@@ -837,6 +900,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by: string
+          department_id?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -856,6 +920,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string
+          department_id?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -868,7 +933,15 @@ export type Database = {
           spec?: Json
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -899,6 +972,7 @@ export type Database = {
           category: string
           created_at: string
           created_by: string
+          department_id: string | null
           deviations: Json
           expected_output: number | null
           expected_output_unit: string | null
@@ -922,6 +996,7 @@ export type Database = {
           category: string
           created_at?: string
           created_by: string
+          department_id?: string | null
           deviations?: Json
           expected_output?: number | null
           expected_output_unit?: string | null
@@ -945,6 +1020,7 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string
+          department_id?: string | null
           deviations?: Json
           expected_output?: number | null
           expected_output_unit?: string | null
@@ -962,6 +1038,13 @@ export type Database = {
           waste_loss?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "qc_batches_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "qc_batches_product_id_fkey"
             columns: ["product_id"]
@@ -984,6 +1067,7 @@ export type Database = {
           category: string
           created_at: string
           created_by: string
+          department_id: string | null
           deviation_note: string | null
           id: string
           max_value: number | null
@@ -1003,6 +1087,7 @@ export type Database = {
           category: string
           created_at?: string
           created_by: string
+          department_id?: string | null
           deviation_note?: string | null
           id?: string
           max_value?: number | null
@@ -1022,6 +1107,7 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string
+          department_id?: string | null
           deviation_note?: string | null
           id?: string
           max_value?: number | null
@@ -1045,6 +1131,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "qc_results_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "qc_results_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -1061,6 +1154,7 @@ export type Database = {
           batch_id: string | null
           category: string | null
           created_at: string
+          department_id: string | null
           document_id: string | null
           id: string
           message: string | null
@@ -1079,6 +1173,7 @@ export type Database = {
           batch_id?: string | null
           category?: string | null
           created_at?: string
+          department_id?: string | null
           document_id?: string | null
           id?: string
           message?: string | null
@@ -1097,6 +1192,7 @@ export type Database = {
           batch_id?: string | null
           category?: string | null
           created_at?: string
+          department_id?: string | null
           document_id?: string | null
           id?: string
           message?: string | null
@@ -1114,6 +1210,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "qc_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_alerts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {
@@ -1254,6 +1357,7 @@ export type Database = {
           created_at: string
           created_by: string
           department: string
+          department_id: string | null
           id: string
           ingredients: Json
           notes: string | null
@@ -1272,6 +1376,7 @@ export type Database = {
           created_at?: string
           created_by: string
           department: string
+          department_id?: string | null
           id?: string
           ingredients?: Json
           notes?: string | null
@@ -1290,6 +1395,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           department?: string
+          department_id?: string | null
           id?: string
           ingredients?: Json
           notes?: string | null
@@ -1303,6 +1409,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "recipes_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipes_product_id_fkey"
             columns: ["product_id"]
