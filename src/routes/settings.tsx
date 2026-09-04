@@ -41,7 +41,9 @@ type PermRow = { view: boolean; upload: boolean; edit: boolean; delete: boolean 
 function SettingsPage() {
   const { status, role } = useAuth();
   const isManager = MANAGER_ROLES.includes(role);
-  const [tab, setTab] = useState<"theme" | "users" | "perms" | "depts">("theme");
+  const { tab: tabParam } = Route.useSearch();
+  const [tab, setTab] = useState<SettingsTab>(tabParam ?? "theme");
+  useEffect(() => { if (tabParam) setTab(tabParam); }, [tabParam]);
   const isOwner = role === "owner";
 
   if (status === "loading") {
