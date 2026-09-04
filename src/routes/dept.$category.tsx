@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
 import { useDepartment } from "@/lib/departments";
-import { ArrowRight, Boxes, FileText, Sparkles, Clock } from "lucide-react";
+import { ArrowRight, Boxes, FileText, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/dept/$category")({
   ssr: false,
