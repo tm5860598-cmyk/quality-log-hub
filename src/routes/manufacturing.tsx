@@ -14,7 +14,8 @@ import { toast } from "sonner";
 import { useWorkspaceDepartments } from "@/lib/departments";
 
 function ManufacturingEngine() {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const user = session?.user ?? null;
   const { category: categoryParam } = Route.useSearch();
   const { departments } = useWorkspaceDepartments();
   const categories = departments.map((d) => d.key);

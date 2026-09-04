@@ -19,7 +19,7 @@ interface UnitConversion {
   to_unit: string;
   conversion_factor: number;
   base_unit: string;
-  department?: string;
+  department?: string | null;
 }
 
 interface MaterialDensity {
@@ -28,7 +28,7 @@ interface MaterialDensity {
   density_value: number;
   from_unit: string;
   to_unit: string;
-  department?: string;
+  department?: string | null;
 }
 
 interface CostData {
@@ -36,20 +36,21 @@ interface CostData {
   material_name: string;
   cost_per_unit: number;
   unit: string;
-  department?: string;
+  department?: string | null;
 }
 
 interface ManufacturingParams {
   id?: string;
   department: string;
   default_waste_percent: number;
-  min_batch_size?: number;
-  max_batch_size?: number;
-  batch_size_unit?: string;
+  min_batch_size?: number | null;
+  max_batch_size?: number | null;
+  batch_size_unit?: string | null;
 }
 
 export function ManufacturingConfiguration() {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const user = session?.user ?? null;
 
   // Unit Conversions
   const [conversions, setConversions] = useState<UnitConversion[]>([]);
@@ -246,7 +247,7 @@ export function ManufacturingConfiguration() {
       if (deptParams?.id) {
         const { error } = await supabase
           .from("manufacturing_parameters")
-          .update(deptParams)
+          .update(deptParams as never)
           .eq("id", deptParams.id);
 
         if (error) throw error;
@@ -255,6 +256,8 @@ export function ManufacturingConfiguration() {
           .from("manufacturing_parameters")
           .insert({
             ...deptParams,
+            department: selectedDept,
+            default_waste_percent: deptParams?.default_waste_percent ?? 2.5,
             created_by: user.id,
           })
           .select()

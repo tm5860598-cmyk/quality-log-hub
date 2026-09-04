@@ -20,9 +20,8 @@ import { PrintedBy } from "@/components/PrintReport";
 export const Route = createFileRoute("/")({
   ssr: false,
   component: Index,
-  validateSearch: (s: Record<string, unknown>) => ({
-    view: s.view === "reports" || s.view === "editor" ? (s.view as "reports" | "editor") : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>): { view?: "reports" | "editor" } =>
+    s.view === "reports" || s.view === "editor" ? { view: s.view } : {},
   head: () => ({
     meta: [
       { title: "My Favourite Project | تقارير الجودة" },

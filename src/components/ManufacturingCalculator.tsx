@@ -58,7 +58,8 @@ export function ManufacturingCalculator({
   productName,
   onBatchCreated,
 }: ManufacturingCalculatorProps) {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const user = session?.user ?? null;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [batchSize, setBatchSize] = useState<number>(0);
@@ -121,7 +122,7 @@ export function ManufacturingCalculator({
         return;
       }
 
-      setCalculationHistory(data || []);
+      setCalculationHistory((data ?? []) as unknown as CalculationResult[]);
     }
 
     loadHistory();
