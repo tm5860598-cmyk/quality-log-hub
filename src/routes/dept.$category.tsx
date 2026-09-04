@@ -59,10 +59,8 @@ function DeptPage() {
 
   const cards = [
     { to: "/products/$category" as const, params: { category }, emoji: "📦", title: "المنتجات والحاسبة", desc: "مكتبة المنتجات والوصفات وحاسبة الخامات حسب الكمية المطلوبة", icon: Boxes },
-    { to: "/chat" as const, search: { category }, emoji: "💬", title: "الدردشة", desc: "بحث متخصص داخل مستندات ومنتجات القسم مع ذكر المصدر", icon: Sparkles },
     { to: "/manufacturing" as const, search: { category }, emoji: "🏭", title: "التصنيع والحاسبة", desc: "الوصفات وإصداراتها، حساب التشغيلة، الفاقد والتكلفة — لهذا القسم فقط", icon: Boxes },
-    { to: "/quality-hub" as const, emoji: "📋", title: "الجودة والتقارير", desc: "التقارير والمراجع وسجلات عدم المطابقة", icon: FileText },
-    { to: "/documents/$category" as const, params: { category }, emoji: "📄", title: "المستندات", desc: "رفع ملفات PDF / Word وربطها بالقسم والمنتج كقاعدة معرفة", icon: FileText },
+    { to: "/documents/$category" as const, params: { category }, emoji: "📄", title: "مستندات القسم", desc: "رفع ملفات PDF / Word وربطها بالقسم والمنتج كقاعدة معرفة", icon: FileText },
   ];
 
   return (
