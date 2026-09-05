@@ -12,13 +12,16 @@ import { ManufacturingConfiguration } from "@/components/ManufacturingConfigurat
 import { AlertTriangle, Settings, Package, Calculator, Plus, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspaceDepartments } from "@/lib/departments";
+import { useDeptPermissions } from "@/lib/permissions";
 
 function ManufacturingEngine() {
   const { session } = useAuth();
   const user = session?.user ?? null;
   const { category: categoryParam } = Route.useSearch();
   const { departments } = useWorkspaceDepartments();
-  const categories = departments.map((d) => d.key);
+  const { can } = useDeptPermissions();
+  const allowedDepartments = departments.filter((d) => can(d.key).view);
+  const categories = allowedDepartments.map((d) => d.key);
   const [products, setProducts] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(categoryParam ?? "juice-production");
   const [selectedProduct, setSelectedProduct] = useState<string>("");
