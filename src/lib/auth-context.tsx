@@ -143,9 +143,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // can be missed. Re-check when the tab becomes visible or the network
     // returns; this refreshes silently instead of dropping the user.
     const recheck = () => {
+      if (!hasSession || manualSignOut.current) return;
       if (document.visibilityState !== "visible") return;
       void verifyOrClear();
     };
+
     document.addEventListener("visibilitychange", recheck);
     window.addEventListener("online", recheck);
     window.addEventListener("focus", recheck);
