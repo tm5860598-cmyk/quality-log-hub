@@ -337,27 +337,27 @@ function AppScreen({
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-4 flex flex-wrap gap-2 print:hidden">
-          <TabBtn active={tab === "hub"} onClick={() => setTab("hub")} icon={<Sparkles className="size-4" />}>
-            {lang === "ar" ? "الرئيسية" : "Home"}
-          </TabBtn>
-          <TabBtn active={tab === "editor"} onClick={() => setTab("editor")} icon={<FileText className="size-4" />}>
-            {editingId ? `${t.reportNo} ${reportNumber}` : t.newReport}
-          </TabBtn>
-          <TabBtn active={tab === "list"} onClick={() => setTab("list")} icon={<FolderOpen className="size-4" />}>
-            {t.savedReports} ({reports.length})
-          </TabBtn>
-          {tab === "editor" && editingId && (
-            <Button size="sm" variant="ghost" onClick={resetForm}>
-              <Plus className="size-4" /> {t.newReport}
-            </Button>
-          )}
-        </div>
-
-        {tab === "hub" && (
-          <HubView lang={lang} username={username} onOpenReports={() => setTab("list")} onNewReport={() => { resetForm(); setTab("editor"); }} />
+        {/* Tabs — reports workspace only (reached from the General Quality hub) */}
+        {tab !== "hub" && (
+          <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+            <TabBtn active={false} onClick={() => setTab("hub")} icon={<Sparkles className="size-4" />}>
+              {lang === "ar" ? "الرئيسية" : "Home"}
+            </TabBtn>
+            <TabBtn active={tab === "editor"} onClick={() => setTab("editor")} icon={<FileText className="size-4" />}>
+              {editingId ? `${t.reportNo} ${reportNumber}` : t.newReport}
+            </TabBtn>
+            <TabBtn active={tab === "list"} onClick={() => setTab("list")} icon={<FolderOpen className="size-4" />}>
+              {t.savedReports} ({reports.length})
+            </TabBtn>
+            {tab === "editor" && editingId && (
+              <Button size="sm" variant="ghost" onClick={resetForm}>
+                <Plus className="size-4" /> {t.newReport}
+              </Button>
+            )}
+          </div>
         )}
+
+        {tab === "hub" && <HubView lang={lang} username={username} />}
         {tab === "editor" && (
           <EditorView
             t={t} lang={lang} dir={dir}
