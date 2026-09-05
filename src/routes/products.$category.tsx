@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartment } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
+import { useDeptPermissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -125,6 +126,7 @@ function ProductsPage() {
     ? { label: dept.title_ar, emoji: dept.emoji, gradient: dept.gradient }
     : CATEGORIES[category];
   const { session, role: userRole, status } = useAuth();
+  const { can, loading: permLoading } = useDeptPermissions();
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
@@ -156,8 +158,19 @@ function ProductsPage() {
     );
   }, [products, query]);
 
-  if (status === "loading") return <div className="min-h-screen grid place-items-center text-slate-500">...</div>;
+  if (status === "loading" || permLoading) return <div className="min-h-screen grid place-items-center text-slate-500">...</div>;
   if (!meta) return <div className="p-6 text-center">قسم غير معروف</div>;
+  if (status === "authenticated" && !can(category).view) {
+    return (
+      <div dir="rtl" className="min-h-screen grid place-items-center p-6 text-center bg-background">
+        <div className="max-w-md space-y-3">
+          <div className="text-4xl">🔒</div>
+          <h1 className="text-xl font-bold">لا تملك صلاحية الدخول لهذا القسم</h1>
+          <Link to="/" className="text-primary underline text-sm">العودة للرئيسية</Link>
+        </div>
+      </div>
+    );
+  }
   if (status === "unauthenticated" || !session) {
     return (
       <div className="min-h-screen grid place-items-center p-6 bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50" dir="rtl">
