@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartment } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
+import { useDeptPermissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -125,6 +126,7 @@ function ProductsPage() {
     ? { label: dept.title_ar, emoji: dept.emoji, gradient: dept.gradient }
     : CATEGORIES[category];
   const { session, role: userRole, status } = useAuth();
+  const { can, loading: permLoading } = useDeptPermissions();
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
