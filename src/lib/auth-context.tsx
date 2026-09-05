@@ -184,17 +184,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useMemo(
     () => async () => {
+      manualSignOut.current = true;
       await queryClient.cancelQueries();
       queryClient.clear();
-      await supabase.auth.signOut();
-      setSession(null);
-      setStatus("unauthenticated");
-      setRole("user");
-      setUsername("");
-      loadedFor.current = null;
+      try {
+        await supabase.auth.signOut();
+      } finally {
+        setSession(null);
+        setStatus("unauthenticated");
+        setRole("user");
+        setUsername("");
+        loadedFor.current = null;
+        // Allow future sessions again after the sign-out settles.
+        setTimeout(() => { manualSignOut.current = false; }, 1000);
+      }
     },
     [queryClient],
   );
+
 
   const value = useMemo<AuthValue>(
     () => ({
