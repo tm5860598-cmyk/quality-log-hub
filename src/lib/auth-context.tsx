@@ -40,12 +40,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id ?? null;
   const loadedFor = useRef<string | null>(null);
 
+  const manualSignOut = useRef(false);
+
   useEffect(() => {
     let mounted = true;
     let authEventRevision = 0;
+    let hasSession = false;
+    let recovering = false;
 
     const applySession = (nextSession: Session | null) => {
       if (!mounted) return;
+      hasSession = !!nextSession;
       setSession(nextSession);
       setStatus(nextSession ? "authenticated" : "unauthenticated");
       if (!nextSession) {
@@ -55,23 +60,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    /**
+     * A `SIGNED_OUT` event (or a null payload while we already hold a session)
+     * is NOT proof the user logged out: a flaky token refresh, a stale copy in
+     * the session store, or a cross-tab race can emit it. So we try to recover
+     * the session from the persisted refresh token first, and only fall back to
+     * "unauthenticated" when the server itself rejects it.
+     */
+    const verifyOrClear = async () => {
+      if (recovering) return;
+      recovering = true;
+      try {
+        const { data: got } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (got.session) {
+          applySession(got.session);
+          return;
+        }
+        const { data: refreshed, error } = await supabase.auth.refreshSession();
+        if (!mounted) return;
+        if (refreshed.session && !error) {
+          applySession(refreshed.session);
+          return;
+        }
+        applySession(null);
+      } catch {
+        // Network/storage hiccup: keep the current session rather than logging out.
+      } finally {
+        recovering = false;
+      }
+    };
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return;
       authEventRevision += 1;
-      if (event === "SIGNED_OUT") {
-        applySession(null);
-        return;
-      }
       if (s) {
         applySession(s);
         return;
       }
-      if (event === "INITIAL_SESSION") applySession(null);
+      if (event === "SIGNED_OUT") {
+        // Explicit logout from our own signOut() is authoritative.
+        if (manualSignOut.current) {
+          applySession(null);
+          return;
+        }
+        if (hasSession) {
+          void verifyOrClear();
+          return;
+        }
+        applySession(null);
+        return;
+      }
+      if (event === "INITIAL_SESSION" && !hasSession) applySession(null);
     });
 
-    // getSession hydrates the persisted localStorage session. Its result is
-    // accepted only when no newer auth event arrived while it was pending.
-    // This prevents a stale null/session result from winning the startup race.
+    // getSession hydrates the persisted session. Its result is accepted only
+    // when no newer auth event arrived while it was pending, so a stale
+    // null/session result can never win the startup race.
     const revisionAtStart = authEventRevision;
     supabase.auth
       .getSession()
@@ -84,14 +129,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("Session hydration failed", error);
           return;
         }
-        applySession(data.session);
+        if (data.session) {
+          applySession(data.session);
+          return;
+        }
+        // No session in the store yet on this device: give the async session
+        // store (and any pending broker reply) one more chance before showing
+        // the login screen.
+        void verifyOrClear();
       });
+
+    // Desktop browsers throttle timers in background tabs, so a token refresh
+    // can be missed. Re-check when the tab becomes visible or the network
+    // returns; this refreshes silently instead of dropping the user.
+    const recheck = () => {
+      if (document.visibilityState !== "visible") return;
+      void verifyOrClear();
+    };
+    document.addEventListener("visibilitychange", recheck);
+    window.addEventListener("online", recheck);
+    window.addEventListener("focus", recheck);
 
     return () => {
       mounted = false;
+      document.removeEventListener("visibilitychange", recheck);
+      window.removeEventListener("online", recheck);
+      window.removeEventListener("focus", recheck);
       sub.subscription.unsubscribe();
     };
   }, []);
+
 
   const refreshProfile = useMemo(
     () => async () => {
