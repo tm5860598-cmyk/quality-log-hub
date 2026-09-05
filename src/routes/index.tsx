@@ -325,9 +325,6 @@ function AppScreen({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild size="sm" className="bg-gradient-to-r from-primary to-accent text-primary-foreground">
-              <Link to="/chat"><Sparkles className="size-4" /> {lang === "ar" ? "الدردشة" : "Chat"}</Link>
-            </Button>
             <Button variant="outline" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
               <Languages className="size-4" /> {t.lang}
             </Button>
