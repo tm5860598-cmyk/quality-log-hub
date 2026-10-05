@@ -46,7 +46,7 @@ const STATUS_LABEL: Record<string, string> = { open: "مفتوح", investigating
 export const Route = createFileRoute("/ncr")({
   ssr: false,
   component: NcrPage,
-  errorComponent: ({ error }) => <div className="p-6 text-center text-sm text-destructive">{String(error?.message ?? error)}</div>,
+  errorComponent: ({ error }) => <div className="p-6 text-center text-sm text-destructive">{String((error as Error)?.message ?? error)}</div>,
   notFoundComponent: () => <div className="p-6 text-center">غير موجود</div>,
 });
 

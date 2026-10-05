@@ -114,7 +114,7 @@ export const Route = createFileRoute("/products/$category")({
   ssr: false,
   component: ProductsPage,
   errorComponent: ({ error }) => (
-    <div className="p-6 text-center text-sm text-destructive">{String(error?.message ?? error)}</div>
+    <div className="p-6 text-center text-sm text-destructive">{String((error as Error)?.message ?? error)}</div>
   ),
   notFoundComponent: () => <div className="p-6 text-center">غير موجود</div>,
 });
