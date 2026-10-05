@@ -5,6 +5,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { syncClock } from "@/lib/clock-sync";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -85,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    let unsubscribe: (() => void) | null = null;
+
+    const start = () => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return;
       authEventRevision += 1;
@@ -102,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (event === "INITIAL_SESSION" && !hasSession) applySession(null);
     });
+    unsubscribe = () => sub.subscription.unsubscribe();
 
     const revisionAtStart = authEventRevision;
     supabase.auth.getSession().then(({ data, error }) => {
@@ -113,10 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       applySession(data.session ?? null);
     });
+    };
+
+    // Correct a wrong device clock BEFORE the auth client starts checking expiry.
+    void syncClock().finally(() => { if (mounted) start(); });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
