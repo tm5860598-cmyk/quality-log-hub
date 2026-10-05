@@ -9,38 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ChatRouteImport } from './routes/chat'
-import { Route as ManufacturingRouteImport } from './routes/manufacturing'
-import { Route as NcrRouteImport } from './routes/ncr'
-import { Route as QualityHubRouteImport } from './routes/quality-hub'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as QualityHubRouteImport } from './routes/quality-hub'
+import { Route as NcrRouteImport } from './routes/ncr'
+import { Route as ManufacturingRouteImport } from './routes/manufacturing'
+import { Route as ChatRouteImport } from './routes/chat'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
-import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
-import { Route as DeptCategoryRouteImport } from './routes/dept.$category'
-import { Route as DocumentsCategoryRouteImport } from './routes/documents.$category'
 import { Route as ProductsCategoryRouteImport } from './routes/products.$category'
+import { Route as DocumentsCategoryRouteImport } from './routes/documents.$category'
+import { Route as DeptCategoryRouteImport } from './routes/dept.$category'
+import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiPublicTimeRouteImport } from './routes/api/public/time'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChatRoute = ChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ManufacturingRoute = ManufacturingRouteImport.update({
-  id: '/manufacturing',
-  path: '/manufacturing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NcrRoute = NcrRouteImport.update({
-  id: '/ncr',
-  path: '/ncr',
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QualityHubRoute = QualityHubRouteImport.update({
@@ -48,14 +33,24 @@ const QualityHubRoute = QualityHubRouteImport.update({
   path: '/quality-hub',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const NcrRoute = NcrRouteImport.update({
+  id: '/ncr',
+  path: '/ncr',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
+const ManufacturingRoute = ManufacturingRouteImport.update({
+  id: '/manufacturing',
+  path: '/manufacturing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
@@ -63,14 +58,9 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ChatRoute,
 } as any)
-const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
-  id: '/$threadId',
-  path: '/$threadId',
-  getParentRoute: () => ChatRoute,
-} as any)
-const DeptCategoryRoute = DeptCategoryRouteImport.update({
-  id: '/dept/$category',
-  path: '/dept/$category',
+const ProductsCategoryRoute = ProductsCategoryRouteImport.update({
+  id: '/products/$category',
+  path: '/products/$category',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentsCategoryRoute = DocumentsCategoryRouteImport.update({
@@ -78,9 +68,19 @@ const DocumentsCategoryRoute = DocumentsCategoryRouteImport.update({
   path: '/documents/$category',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProductsCategoryRoute = ProductsCategoryRouteImport.update({
-  id: '/products/$category',
-  path: '/products/$category',
+const DeptCategoryRoute = DeptCategoryRouteImport.update({
+  id: '/dept/$category',
+  path: '/dept/$category',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTimeRoute = ApiPublicTimeRouteImport.update({
@@ -197,32 +197,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chat': {
-      id: '/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof ChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/manufacturing': {
-      id: '/manufacturing'
-      path: '/manufacturing'
-      fullPath: '/manufacturing'
-      preLoaderRoute: typeof ManufacturingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ncr': {
-      id: '/ncr'
-      path: '/ncr'
-      fullPath: '/ncr'
-      preLoaderRoute: typeof NcrRouteImport
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quality-hub': {
@@ -232,18 +211,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QualityHubRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
+    '/ncr': {
+      id: '/ncr'
+      path: '/ncr'
+      fullPath: '/ncr'
+      preLoaderRoute: typeof NcrRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
+    '/manufacturing': {
+      id: '/manufacturing'
+      path: '/manufacturing'
+      fullPath: '/manufacturing'
+      preLoaderRoute: typeof ManufacturingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/': {
@@ -253,18 +246,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof ChatRoute
     }
-    '/chat/$threadId': {
-      id: '/chat/$threadId'
-      path: '/$threadId'
-      fullPath: '/chat/$threadId'
-      preLoaderRoute: typeof ChatThreadIdRouteImport
-      parentRoute: typeof ChatRoute
-    }
-    '/dept/$category': {
-      id: '/dept/$category'
-      path: '/dept/$category'
-      fullPath: '/dept/$category'
-      preLoaderRoute: typeof DeptCategoryRouteImport
+    '/products/$category': {
+      id: '/products/$category'
+      path: '/products/$category'
+      fullPath: '/products/$category'
+      preLoaderRoute: typeof ProductsCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/documents/$category': {
@@ -274,11 +260,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/products/$category': {
-      id: '/products/$category'
-      path: '/products/$category'
-      fullPath: '/products/$category'
-      preLoaderRoute: typeof ProductsCategoryRouteImport
+    '/dept/$category': {
+      id: '/dept/$category'
+      path: '/dept/$category'
+      fullPath: '/dept/$category'
+      preLoaderRoute: typeof DeptCategoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/$threadId': {
+      id: '/chat/$threadId'
+      path: '/$threadId'
+      fullPath: '/chat/$threadId'
+      preLoaderRoute: typeof ChatThreadIdRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/time': {
