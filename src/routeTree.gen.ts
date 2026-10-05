@@ -21,6 +21,7 @@ import { Route as DocumentsCategoryRouteImport } from './routes/documents.$categ
 import { Route as DeptCategoryRouteImport } from './routes/dept.$category'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiPublicTimeRouteImport } from './routes/api/public/time'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -82,6 +83,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTimeRoute = ApiPublicTimeRouteImport.update({
+  id: '/api/public/time',
+  path: '/api/public/time',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/documents/$category': typeof DocumentsCategoryRoute
   '/products/$category': typeof ProductsCategoryRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/public/time': typeof ApiPublicTimeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/documents/$category': typeof DocumentsCategoryRoute
   '/products/$category': typeof ProductsCategoryRoute
   '/chat': typeof ChatIndexRoute
+  '/api/public/time': typeof ApiPublicTimeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/documents/$category': typeof DocumentsCategoryRoute
   '/products/$category': typeof ProductsCategoryRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/public/time': typeof ApiPublicTimeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/documents/$category'
     | '/products/$category'
     | '/chat/'
+    | '/api/public/time'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/documents/$category'
     | '/products/$category'
     | '/chat'
+    | '/api/public/time'
   id:
     | '__root__'
     | '/'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/documents/$category'
     | '/products/$category'
     | '/chat/'
+    | '/api/public/time'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -180,6 +192,7 @@ export interface RootRouteChildren {
   DeptCategoryRoute: typeof DeptCategoryRoute
   DocumentsCategoryRoute: typeof DocumentsCategoryRoute
   ProductsCategoryRoute: typeof ProductsCategoryRoute
+  ApiPublicTimeRoute: typeof ApiPublicTimeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -268,6 +281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/time': {
+      id: '/api/public/time'
+      path: '/api/public/time'
+      fullPath: '/api/public/time'
+      preLoaderRoute: typeof ApiPublicTimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -294,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeptCategoryRoute: DeptCategoryRoute,
   DocumentsCategoryRoute: DocumentsCategoryRoute,
   ProductsCategoryRoute: ProductsCategoryRoute,
+  ApiPublicTimeRoute: ApiPublicTimeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
