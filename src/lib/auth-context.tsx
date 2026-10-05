@@ -67,25 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * the session from the persisted refresh token first, and only fall back to
      * "unauthenticated" when the server itself rejects it.
      */
+    // Never call refreshSession() manually: the client already auto-refreshes,
+    // and concurrent manual refreshes rotate/revoke the refresh token and hit
+    // the auth rate limit (429), which is what kicked desktop users out.
     const verifyOrClear = async () => {
       if (recovering) return;
       recovering = true;
       try {
+        await new Promise((r) => setTimeout(r, 1500));
         const { data: got } = await supabase.auth.getSession();
         if (!mounted) return;
-        if (got.session) {
-          applySession(got.session);
-          return;
-        }
-        const { data: refreshed, error } = await supabase.auth.refreshSession();
-        if (!mounted) return;
-        if (refreshed.session && !error) {
-          applySession(refreshed.session);
-          return;
-        }
-        applySession(null);
+        applySession(got.session ?? null);
       } catch {
-        // Network/storage hiccup: keep the current session rather than logging out.
+        // keep current state on transient errors
       } finally {
         recovering = false;
       }
@@ -99,64 +93,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (event === "SIGNED_OUT") {
-        // Explicit logout from our own signOut() is authoritative.
-        if (manualSignOut.current) {
+        if (manualSignOut.current || !hasSession) {
           applySession(null);
           return;
         }
-        if (hasSession) {
-          void verifyOrClear();
-          return;
-        }
-        applySession(null);
+        void verifyOrClear();
         return;
       }
       if (event === "INITIAL_SESSION" && !hasSession) applySession(null);
     });
 
-    // getSession hydrates the persisted session. Its result is accepted only
-    // when no newer auth event arrived while it was pending, so a stale
-    // null/session result can never win the startup race.
     const revisionAtStart = authEventRevision;
-    supabase.auth
-      .getSession()
-      .then(({ data, error }) => {
-        if (!mounted) return;
-        if (authEventRevision !== revisionAtStart) return;
-        if (error) {
-          // A temporary storage/network error is not proof of logout. Keep the
-          // app loading until INITIAL_SESSION or a definitive auth event wins.
-          console.error("Session hydration failed", error);
-          return;
-        }
-        if (data.session) {
-          applySession(data.session);
-          return;
-        }
-        // No session in the store yet on this device: give the async session
-        // store (and any pending broker reply) one more chance before showing
-        // the login screen.
-        void verifyOrClear();
-      });
-
-    // Desktop browsers throttle timers in background tabs, so a token refresh
-    // can be missed. Re-check when the tab becomes visible or the network
-    // returns; this refreshes silently instead of dropping the user.
-    const recheck = () => {
-      if (!hasSession || manualSignOut.current) return;
-      if (document.visibilityState !== "visible") return;
-      void verifyOrClear();
-    };
-
-    document.addEventListener("visibilitychange", recheck);
-    window.addEventListener("online", recheck);
-    window.addEventListener("focus", recheck);
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return;
+      if (authEventRevision !== revisionAtStart) return;
+      if (error) {
+        console.error("Session hydration failed", error);
+        return;
+      }
+      applySession(data.session ?? null);
+    });
 
     return () => {
       mounted = false;
-      document.removeEventListener("visibilitychange", recheck);
-      window.removeEventListener("online", recheck);
-      window.removeEventListener("focus", recheck);
       sub.subscription.unsubscribe();
     };
   }, []);
