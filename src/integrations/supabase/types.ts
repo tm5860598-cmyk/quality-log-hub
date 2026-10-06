@@ -1425,6 +1425,48 @@ export type Database = {
           },
         ]
       }
+      report_settings: {
+        Row: {
+          company_extra_data: string | null
+          company_name: string
+          created_at: string
+          default_report_title: string
+          id: string
+          logo_path: string | null
+          show_company_data: boolean
+          show_logo: boolean
+          style_mode: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_extra_data?: string | null
+          company_name?: string
+          created_at?: string
+          default_report_title?: string
+          id?: string
+          logo_path?: string | null
+          show_company_data?: boolean
+          show_logo?: boolean
+          style_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_extra_data?: string | null
+          company_name?: string
+          created_at?: string
+          default_report_title?: string
+          id?: string
+          logo_path?: string | null
+          show_company_data?: boolean
+          show_logo?: boolean
+          style_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
