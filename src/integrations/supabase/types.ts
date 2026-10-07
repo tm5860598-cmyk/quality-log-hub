@@ -1302,6 +1302,35 @@ export type Database = {
           },
         ]
       }
+      recipe_qr_shares: {
+        Row: {
+          created_at: string
+          created_by: string
+          product_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          product_id: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          product_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_qr_shares_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_versions: {
         Row: {
           change_note: string | null
@@ -1614,6 +1643,7 @@ export type Database = {
         Args: { _action: string; _category: string; _user_id: string }
         Returns: boolean
       }
+      ensure_recipe_qr_share: { Args: { _product_id: string }; Returns: string }
       has_any_role: {
         Args: { _roles: string[]; _user_id: string }
         Returns: boolean
@@ -1642,6 +1672,7 @@ export type Database = {
         }[]
       }
       product_quality_score: { Args: { _product_id: string }; Returns: number }
+      read_recipe_qr_share: { Args: { _token: string }; Returns: Json }
     }
     Enums: {
       app_role:
