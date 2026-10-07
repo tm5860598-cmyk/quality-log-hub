@@ -17,6 +17,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { QrLabelDialog } from "@/components/QrLabelDialog";
 import { SopDialog } from "@/components/SopDialog";
 import { uploadProductImage } from "@/lib/product-media";
+import { PrintReport } from "@/components/PrintReport";
 
 // ---------- Types ----------
 type Ingredient = {
@@ -280,6 +281,7 @@ function ProductsPage() {
                 onEdit={() => openEdit(selected)}
                 onDelete={() => del(selected)}
                 gradient={meta.gradient}
+                department={meta.label}
               />
             ) : (
               <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-10 text-center text-slate-500 shadow-lg">
@@ -306,10 +308,10 @@ function ProductsPage() {
 
 // ---------- Detail view ----------
 function ProductDetail({
-  product, canEdit, canDelete, onEdit, onDelete, gradient,
+  product, canEdit, canDelete, onEdit, onDelete, gradient, department,
 }: {
   product: Product; canEdit: boolean; canDelete: boolean;
-  onEdit: () => void; onDelete: () => void; gradient: string;
+  onEdit: () => void; onDelete: () => void; gradient: string; department: string;
 }) {
   const [qty, setQty] = useState<number>(product.base_quantity);
   const [view, setView] = useState<"calc" | "spec" | "recipe">("calc");
@@ -323,6 +325,16 @@ function ProductDetail({
 
   return (
     <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-5 md:p-6 shadow-lg space-y-5">
+      <PrintReport title="تقرير المنتج وحساب الخامات" department={department} reportNumber={product.code || undefined} product={product.name} meta={[
+        { label: "الكمية المستهدفة", value: `${qty} ${product.base_unit}` },
+        { label: "حجم العبوة", value: product.package_size || "—" },
+        { label: "نوع المنتج", value: product.product_type || "—" },
+      ]}>
+        {product.description && <p>{product.description}</p>}
+        <h2>الخامات المطلوبة</h2>
+        <table><thead><tr><th>#</th><th>الخامة</th><th>الكود</th><th>المورد</th><th>الكمية</th><th>الوحدة</th><th>%</th></tr></thead><tbody>{scaled.map((ingredient, index) => <tr key={`print-${index}`}><td>{index + 1}</td><td>{ingredient.name}</td><td>{ingredient.code || "—"}</td><td>{ingredient.supplier || "—"}</td><td>{ingredient.total}</td><td>{ingredient.unit}</td><td>{ingredient.percentage != null ? `${ingredient.percentage}%` : "—"}</td></tr>)}</tbody></table>
+        {product.notes && <section className="print-block"><h3>ملاحظات</h3><p>{product.notes}</p></section>}
+      </PrintReport>
       <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div className="flex gap-3 min-w-0">
           <ProductImage

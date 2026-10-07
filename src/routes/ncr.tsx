@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import {
   ArrowRight, Plus, Search, X, AlertTriangle, Save, Filter, Trash2, Printer,
 } from "lucide-react";
+import { PrintReport } from "@/components/PrintReport";
 
 type Ncr = {
   id: string; ncr_number: number; title: string; category: string | null;
@@ -208,6 +209,15 @@ function NcrDetail({ ncr, canEdit, canDelete, onChange, onDelete, userId }: {
 
   return (
     <div className="rounded-2xl border bg-white/80 backdrop-blur p-5 md:p-6 shadow-lg space-y-5">
+      <PrintReport title="تقرير عدم مطابقة وإجراءات تصحيحية" department={ncr.category || "الجودة العام"} reportNumber={`NCR-${ncr.ncr_number}`} product={ncr.product_name || undefined} meta={[
+        { label: "رقم الدفعة", value: ncr.batch_number || "—" },
+        { label: "درجة الخطورة", value: SEV_LABEL[ncr.severity] },
+        { label: "الحالة", value: STATUS_LABEL[ncr.status] },
+      ]}>
+        <section className="print-block"><h2>{ncr.title}</h2><h3>وصف عدم المطابقة</h3><p>{ncr.description}</p></section>
+        <section className="print-block"><h3>التحليل والإجراء الفوري</h3><table><tbody><tr><th>السبب الجذري</th><td>{rootCause || "—"}</td></tr><tr><th>الإجراء الفوري</th><td>{immediateAction || "—"}</td></tr></tbody></table></section>
+        <section className="print-block"><h3>الإجراءات التصحيحية والوقائية (CAPA)</h3><table><thead><tr><th>#</th><th>النوع</th><th>الإجراء</th><th>تاريخ الاستحقاق</th><th>الحالة</th><th>الفاعلية</th></tr></thead><tbody>{capas.map((c, index) => <tr key={`print-${c.id}`}><td>{index + 1}</td><td>{c.action_type === "corrective" ? "تصحيحي" : "وقائي"}</td><td>{c.description}</td><td>{c.due_date || "—"}</td><td>{c.status}</td><td>{c.effectiveness || "—"}</td></tr>)}</tbody></table></section>
+      </PrintReport>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
