@@ -97,7 +97,7 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Standalone full-length print layout (outside every scroll container). */}
-      <PrintReport title={`تقرير — ${deptLabel}`} meta={printMeta}>
+      <PrintReport title="تقرير الدردشة" department={deptLabel} product={reportTitle || undefined} meta={printMeta.filter((item) => !["القسم", "المنتج / الموضوع", "التاريخ"].includes(item.label))}>
         {messages.map((m) => (
           <section key={`p-${m.id}`} className="print-block">
             <div className="print-block-label">{m.role === "user" ? "السؤال:" : "التقرير:"}</div>
