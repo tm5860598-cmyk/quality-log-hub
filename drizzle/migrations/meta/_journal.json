@@ -15,6 +15,13 @@
       "when": 1791244995719,
       "tag": "0001_secure_report_branding_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791336170409,
+      "tag": "0002_recipe_qr_readonly_shares",
+      "breakpoints": true
     }
   ]
 }
