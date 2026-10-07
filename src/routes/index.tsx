@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
 import { useWorkspaceDepartments, QUALITY_HUB_KEY } from "@/lib/departments";
-import { PrintedBy } from "@/components/PrintReport";
+import { PrintReport } from "@/components/PrintReport";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -293,16 +293,9 @@ function AppScreen({
   };
 
   const handlePrint = () => window.print();
-  const handlePdf = async () => {
-    if (!reportRef.current) return;
-    const html2pdf = (await import("html2pdf.js")).default;
-    await html2pdf().set({
-      margin: 10, filename: `${title || t.title}-${date}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
-    }).from(reportRef.current).save();
-    toast.success(t.exported);
+  const handlePdf = () => {
+    window.print();
+    toast.success(lang === "ar" ? "اختر «حفظ كملف PDF» من نافذة الطباعة" : "Choose “Save as PDF” in the print window");
   };
 
   const { signOut } = useAuth();
@@ -410,6 +403,12 @@ function EditorView(props: {
 
   return (
     <>
+      <PrintReport title={title || t.title} department={lang === "ar" ? "الجودة العام" : "General Quality"} reportNumber={reportNumber ? String(reportNumber) : undefined} meta={details ? [{ label: t.reportDetails, value: details }] : undefined}>
+        <table>
+          <thead><tr><th>{t.num}</th><th>{t.problem}</th><th>{t.action}</th><th>{t.quality}</th><th>{t.production}</th></tr></thead>
+          <tbody>{rows.map((row, index) => <tr key={`print-${row.id}`}><td>{index + 1}</td><td>{row.problem || "—"}</td><td>{row.action || "—"}</td><td>{row.qualitySign || "—"}</td><td>{row.productionSign || "—"}</td></tr>)}</tbody>
+        </table>
+      </PrintReport>
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
         <Button variant="outline" onClick={addRow} className="border-emerald-200 bg-white/70 text-emerald-700">
           <Plus className="size-4" /> {t.add}
@@ -497,9 +496,6 @@ function EditorView(props: {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="hidden print:block">
-          <PrintedBy />
         </div>
       </div>
     </>

@@ -289,10 +289,10 @@
 /* --------------------- Print / PDF report --------------------- */
 
 /* Standalone print layout: hidden on screen, printed in full (multi-page). */
-.print-root { display: none; }
+.print-root { display: none; font-family: Tahoma, Arial, sans-serif; }
 
 @media print {
-  @page { size: A4; margin: 15mm 14mm; }
+  @page { size: A4; margin: 30mm 14mm 22mm; }
 
   html, body {
     background: #fff !important;
@@ -313,7 +313,8 @@
     max-height: none !important;
     overflow: visible !important;
     color: #000 !important;
-    font-size: 11.5pt;
+    font-family: Tahoma, Arial, sans-serif !important;
+    font-size: 10.5pt;
     line-height: 1.55;
   }
 
@@ -337,20 +338,28 @@
     height: auto !important;
   }
 
-  .print-report-head { border-bottom: 2px solid #222; padding-bottom: 8pt; margin-bottom: 12pt; }
-  .print-report-head h1 { font-size: 17pt; font-weight: 800; margin: 0 0 6pt; }
-  .print-meta { border-collapse: collapse; font-size: 9.5pt; }
-  .print-meta th { text-align: start; font-weight: 700; padding: 1pt 10pt 1pt 0; white-space: nowrap; }
-  .print-meta td { padding: 1pt 0; }
+  .print-report-head { display: flex; align-items: center; gap: 12pt; border-bottom: 3px double #222; padding-bottom: 8pt; margin-bottom: 10pt; }
+  .print-style-simple .print-report-head { border-bottom: 1px solid #777; }
+  .print-company-logo { width: 54pt; height: 54pt; object-fit: contain; flex: 0 0 auto; }
+  .print-report-identity { flex: 1; text-align: center; }
+  .print-company-name { font-size: 18pt; font-weight: 800; }
+  .print-report-head h1 { font-size: 14pt; font-weight: 800; margin: 2pt 0; }
+  .print-department-name { font-size: 10pt; font-weight: 700; }
+  .print-company-data { white-space: pre-line; font-size: 8.5pt; margin-top: 2pt; color: #444 !important; }
+  .print-meta { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 12pt; }
+  .print-meta th, .print-meta td { border: 1px solid #777; padding: 3pt 5pt; text-align: start; }
+  .print-meta th { font-weight: 700; white-space: nowrap; width: 16%; background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .print-signature {
     margin-top: 16pt; padding-top: 6pt; border-top: 1px dashed #666;
     font-size: 10pt; text-align: start;
     page-break-inside: avoid; break-inside: avoid;
   }
   .print-report-foot {
-    margin-top: 14pt; padding-top: 6pt; border-top: 1px solid #999;
-    font-size: 8.5pt; text-align: center;
+    position: fixed; bottom: -16mm; left: 0; right: 0;
+    padding-top: 4pt; border-top: 1px solid #999;
+    font-size: 8pt; display: flex; justify-content: space-between;
   }
+  .print-page-number::after { content: counter(page); }
 
 
   .print-block { margin: 0 0 12pt; page-break-inside: auto; break-inside: auto; }
@@ -382,7 +391,8 @@
     page-break-after: avoid;
     break-after: avoid;
   }
-  .rich-content img { max-width: 100% !important; page-break-inside: avoid; }
+  .rich-content img { max-width: 100% !important; page-break-inside: avoid; break-inside: avoid; }
+  .rich-content section, .rich-content article, .rich-content .print-keep { page-break-inside: avoid; break-inside: avoid; }
   .table-scroll { overflow: visible !important; }
   a[href]::after { content: ""; }
 }

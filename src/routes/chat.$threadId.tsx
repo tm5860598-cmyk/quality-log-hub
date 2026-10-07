@@ -15,6 +15,14 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/chat/$threadId")({
   component: ChatThread,
   validateSearch: (s: Record<string, unknown>) => ({ category: typeof s.category === "string" ? s.category : undefined }),
+  head: () => ({ meta: [
+    { title: "الدردشة والتقارير | My Favourite Project" },
+    { name: "description", content: "محادثات الأقسام وتقاريرها القابلة للطباعة." },
+    { property: "og:title", content: "الدردشة والتقارير | My Favourite Project" },
+    { property: "og:description", content: "محادثات الأقسام وتقاريرها القابلة للطباعة." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
 });
 
 function getText(m: UIMessage) {
@@ -97,7 +105,7 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Standalone full-length print layout (outside every scroll container). */}
-      <PrintReport title={`تقرير — ${deptLabel}`} meta={printMeta}>
+      <PrintReport title="تقرير الدردشة" department={deptLabel} product={reportTitle || undefined} meta={printMeta.filter((item) => !["القسم", "المنتج / الموضوع", "التاريخ"].includes(item.label))}>
         {messages.map((m) => (
           <section key={`p-${m.id}`} className="print-block">
             <div className="print-block-label">{m.role === "user" ? "السؤال:" : "التقرير:"}</div>
