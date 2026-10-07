@@ -47,6 +47,14 @@ const STATUS_LABEL: Record<string, string> = { open: "مفتوح", investigating
 export const Route = createFileRoute("/ncr")({
   ssr: false,
   component: NcrPage,
+  head: () => ({ meta: [
+    { title: "تقارير عدم المطابقة والإجراءات التصحيحية | My Favourite Project" },
+    { name: "description", content: "إدارة وطباعة تقارير عدم المطابقة وإجراءات CAPA." },
+    { property: "og:title", content: "تقارير عدم المطابقة | My Favourite Project" },
+    { property: "og:description", content: "إدارة وطباعة تقارير عدم المطابقة وإجراءات CAPA." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   errorComponent: ({ error }) => <div className="p-6 text-center text-sm text-destructive">{String((error as Error)?.message ?? error)}</div>,
   notFoundComponent: () => <div className="p-6 text-center">غير موجود</div>,
 });

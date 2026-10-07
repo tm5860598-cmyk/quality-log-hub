@@ -15,6 +15,14 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/chat/$threadId")({
   component: ChatThread,
   validateSearch: (s: Record<string, unknown>) => ({ category: typeof s.category === "string" ? s.category : undefined }),
+  head: () => ({ meta: [
+    { title: "الدردشة والتقارير | My Favourite Project" },
+    { name: "description", content: "محادثات الأقسام وتقاريرها القابلة للطباعة." },
+    { property: "og:title", content: "الدردشة والتقارير | My Favourite Project" },
+    { property: "og:description", content: "محادثات الأقسام وتقاريرها القابلة للطباعة." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
 });
 
 function getText(m: UIMessage) {

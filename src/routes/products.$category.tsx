@@ -114,6 +114,14 @@ function normalizeProduct(p: Record<string, unknown>): Product {
 export const Route = createFileRoute("/products/$category")({
   ssr: false,
   component: ProductsPage,
+  head: () => ({ meta: [
+    { title: "المنتجات والوصفات | My Favourite Project" },
+    { name: "description", content: "مكتبة المنتجات والوصفات وحساب الخامات وتقارير التصنيع." },
+    { property: "og:title", content: "المنتجات والوصفات | My Favourite Project" },
+    { property: "og:description", content: "مكتبة المنتجات والوصفات وحساب الخامات وتقارير التصنيع." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   errorComponent: ({ error }) => (
     <div className="p-6 text-center text-sm text-destructive">{String((error as Error)?.message ?? error)}</div>
   ),

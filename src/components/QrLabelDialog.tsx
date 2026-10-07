@@ -24,7 +24,7 @@ export function QrLabelDialog({
     const settings = await loadReportSettings();
     const logoUrl = settings.show_logo ? await resolveReportLogo(settings.logo_path) : null;
     w.document.write(`<html dir="rtl"><head><title>${title}</title><style>
-      body{font-family:system-ui,sans-serif;padding:24px;text-align:center;color:#0f172a}
+      body{font-family:Tahoma,Arial,sans-serif;padding:24px;text-align:center;color:#0f172a}
       .brand-logo{width:58px;height:58px;object-fit:contain}.brand{font-size:16px;font-weight:700;margin:4px}
       img{width:340px;height:340px}
       h2{margin:12px 0 4px;font-size:20px}
