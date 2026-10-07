@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -7,20 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, Check, LayoutGrid, Plus } from "lucide-react";
+import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, Check, LayoutGrid, Plus, Printer, Upload, Image as ImageIcon } from "lucide-react";
 import { useDepartments, type Department } from "@/lib/departments";
 import { ROLE_OPTIONS, roleLabel } from "@/lib/roles";
 import { applyTheme, readTheme, THEMES, type ThemeMode } from "@/lib/theme";
 import { MANAGER_ROLES } from "@/lib/permissions";
 import { createAppUser, updateAppUser, deleteAppUser, setDeptPermissions } from "@/lib/users.functions";
+import { clearReportSettingsCache, resolveReportLogo, uploadReportLogo, useReportSettings, type ReportSettings } from "@/lib/report-settings";
 
-type SettingsTab = "theme" | "users" | "perms" | "depts";
+type SettingsTab = "theme" | "users" | "perms" | "depts" | "printing";
 
 export const Route = createFileRoute("/settings")({
   ssr: false,
   component: SettingsPage,
   validateSearch: (s: Record<string, unknown>): { tab?: SettingsTab } =>
-    s.tab === "theme" || s.tab === "users" || s.tab === "perms" || s.tab === "depts"
+    s.tab === "theme" || s.tab === "users" || s.tab === "perms" || s.tab === "depts" || s.tab === "printing"
       ? { tab: s.tab }
       : {},
   head: () => ({
@@ -78,6 +79,7 @@ function SettingsPage() {
             <>
               <TabBtn active={tab === "users"} onClick={() => setTab("users")} icon={<Users className="size-4" />}>إدارة المستخدمين</TabBtn>
               <TabBtn active={tab === "perms"} onClick={() => setTab("perms")} icon={<ShieldCheck className="size-4" />}>الصلاحيات</TabBtn>
+              <TabBtn active={tab === "printing"} onClick={() => setTab("printing")} icon={<Printer className="size-4" />}>إعدادات التقرير والطباعة</TabBtn>
             </>
           )}
           {isOwner && (
@@ -89,7 +91,72 @@ function SettingsPage() {
         {tab === "users" && isManager && <UsersSection callerRole={role} />}
         {tab === "perms" && isManager && <PermissionsSection callerRole={role} />}
         {tab === "depts" && isOwner && <DepartmentsSection />}
+        {tab === "printing" && isManager && <ReportPrintingSection />}
       </div>
+    </div>
+  );
+}
+
+function ReportPrintingSection() {
+  const { userId } = useAuth();
+  const { settings, loading, reload } = useReportSettings();
+  const [form, setForm] = useState<ReportSettings>(settings);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => setForm(settings), [settings]);
+  useEffect(() => {
+    let alive = true;
+    void resolveReportLogo(form.logo_path).then((url) => { if (alive) setLogoUrl(url); });
+    return () => { alive = false; };
+  }, [form.logo_path]);
+
+  const set = <K extends keyof ReportSettings>(key: K, value: ReportSettings[K]) => setForm((current) => ({ ...current, [key]: value }));
+  const uploadLogo = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !userId) return;
+    if (!file.type.startsWith("image/")) return toast.error("اختر ملف صورة للشعار");
+    if (file.size > 5 * 1024 * 1024) return toast.error("الحد الأقصى للشعار 5MB");
+    setBusy(true);
+    try {
+      set("logo_path", await uploadReportLogo(file, userId));
+      toast.success("تم رفع الشعار — اضغط حفظ لتطبيقه");
+    } catch (error) { toast.error(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); event.target.value = ""; }
+  };
+  const save = async () => {
+    if (!userId || !form.company_name.trim() || !form.default_report_title.trim()) return toast.error("اسم الشركة وعنوان التقرير مطلوبان");
+    setBusy(true);
+    const payload = {
+      company_name: form.company_name.trim(), logo_path: form.logo_path,
+      default_report_title: form.default_report_title.trim(),
+      company_extra_data: form.company_extra_data?.trim() || null,
+      show_logo: form.show_logo, show_company_data: form.show_company_data,
+      style_mode: form.style_mode, updated_by: userId,
+    };
+    const result = form.id
+      ? await supabase.from("report_settings").update(payload).eq("id", form.id)
+      : await supabase.from("report_settings").insert(payload);
+    setBusy(false);
+    if (result.error) return toast.error(result.error.message);
+    clearReportSettingsCache();
+    await reload();
+    toast.success("تم حفظ إعدادات التقرير والطباعة");
+  };
+
+  if (loading) return <div className="rounded-lg border bg-card p-6 text-muted-foreground">جاري تحميل إعدادات الطباعة...</div>;
+  return (
+    <div className="rounded-lg bg-card border shadow-sm p-5 space-y-5">
+      <div><h2 className="font-bold flex items-center gap-2"><Printer className="size-4" /> إعدادات التقرير والطباعة</h2><p className="text-sm text-muted-foreground mt-1">تُطبَّق هذه الهوية تلقائيًا على جميع التقارير المطبوعة.</p></div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div><Label className="mb-1 block">اسم الشركة</Label><Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} /></div>
+        <div><Label className="mb-1 block">عنوان التقرير الافتراضي</Label><Input value={form.default_report_title} onChange={(e) => set("default_report_title", e.target.value)} /></div>
+        <div className="md:col-span-2"><Label className="mb-1 block">بيانات الشركة الاختيارية</Label><textarea rows={3} value={form.company_extra_data ?? ""} onChange={(e) => set("company_extra_data", e.target.value)} placeholder="العنوان، الهاتف، البريد الإلكتروني..." className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></div>
+        <div><Label className="mb-1 block">نمط التقرير</Label><select value={form.style_mode} onChange={(e) => set("style_mode", e.target.value as ReportSettings["style_mode"])} className="w-full h-9 rounded-md border bg-background px-3 text-sm"><option value="formal">رسمي</option><option value="simple">بسيط</option></select></div>
+        <div className="space-y-2"><Label className="block">الشعار</Label><div className="flex items-center gap-3">{logoUrl ? <img src={logoUrl} alt="شعار الشركة" className="size-16 object-contain rounded-md border bg-background" /> : <div className="size-16 grid place-items-center rounded-md border bg-muted"><ImageIcon className="size-6 text-muted-foreground" /></div>}<Button asChild variant="outline"><label className="cursor-pointer"><Upload className="size-4" /> رفع الشعار<input type="file" accept="image/*" className="hidden" onChange={uploadLogo} disabled={busy} /></label></Button></div></div>
+      </div>
+      <div className="flex flex-wrap gap-5"><label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={form.show_logo} onChange={(e) => set("show_logo", e.target.checked)} className="size-4 accent-[var(--primary)]" />إظهار الشعار</label><label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={form.show_company_data} onChange={(e) => set("show_company_data", e.target.checked)} className="size-4 accent-[var(--primary)]" />إظهار بيانات الشركة</label></div>
+      <Button onClick={save} disabled={busy}><Save className="size-4" /> حفظ إعدادات الطباعة</Button>
     </div>
   );
 }
