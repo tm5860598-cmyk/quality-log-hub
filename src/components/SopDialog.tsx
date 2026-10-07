@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Printer } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { buildStandalonePrintDocument } from "@/lib/report-settings";
 
 type Ing = { name: string; amount: number; unit: string; code?: string; supplier?: string; percentage?: number };
 type Step = { order: number; description: string; ingredient_ref?: string; quantity?: string; stir_speed?: string; stir_time?: string; temperature?: string; pressure?: string; notes?: string };
@@ -18,6 +20,7 @@ export function SopDialog({
   qty: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { username } = useAuth();
   if (!open) return null;
   const factor = product.base_quantity > 0 ? qty / product.base_quantity : 0;
   const scaled = product.ingredients.map((i) => ({ ...i, total: +(i.amount * factor).toFixed(3) }));
@@ -27,21 +30,18 @@ export function SopDialog({
   const batchNo = `BMR-${Date.now().toString().slice(-8)}`;
   const today = new Date().toLocaleDateString("ar-EG");
 
-  const doPrint = () => {
+  const doPrint = async () => {
     const html = ref.current?.innerHTML ?? "";
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
-    w.document.write(`<html dir="rtl"><head><title>${title}</title><style>
-      body{font-family:system-ui,sans-serif;padding:24px;color:#0f172a}
-      h1{font-size:20px;margin:0 0 4px} h2{font-size:15px;margin:16px 0 6px;color:#4338ca;border-bottom:1px solid #e2e8f0;padding-bottom:2px}
-      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
-      th,td{border:1px solid #cbd5e1;padding:6px;text-align:right} th{background:#f1f5f9}
-      .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
-      .box{border:1px solid #cbd5e1;padding:6px 8px;border-radius:4px;background:#f8fafc}
-      .sign{margin-top:24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px}
-      .sign>div{border-top:1px solid #94a3b8;padding-top:6px;text-align:center}
-      ol{padding-right:20px} li{margin-bottom:6px}
-    </style></head><body>${html}</body></html>`);
+    w.document.write(await buildStandalonePrintDocument({
+      title: `${arTitle} (${isSop ? "SOP" : "BMR"})`,
+      department: product.product_type || "التصنيع والإنتاج",
+      reportNumber: isSop ? product.code || undefined : batchNo,
+      product: product.name,
+      username,
+      bodyHtml: html,
+    }));
     w.document.close();
     setTimeout(() => { w.print(); w.close(); }, 400);
   };
