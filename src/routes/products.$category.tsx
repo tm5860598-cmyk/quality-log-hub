@@ -333,6 +333,10 @@ function ProductDetail({
         {product.description && <p>{product.description}</p>}
         <h2>الخامات المطلوبة</h2>
         <table><thead><tr><th>#</th><th>الخامة</th><th>الكود</th><th>المورد</th><th>الكمية</th><th>الوحدة</th><th>%</th></tr></thead><tbody>{scaled.map((ingredient, index) => <tr key={`print-${index}`}><td>{index + 1}</td><td>{ingredient.name}</td><td>{ingredient.code || "—"}</td><td>{ingredient.supplier || "—"}</td><td>{ingredient.total}</td><td>{ingredient.unit}</td><td>{ingredient.percentage != null ? `${ingredient.percentage}%` : "—"}</td></tr>)}</tbody></table>
+        <h2>المواصفات القياسية</h2>
+        <table><tbody>{Object.entries(product.spec).filter(([, value]) => value).map(([key, value]) => <tr key={`spec-${key}`}><th>{key}</th><td>{value}</td></tr>)}</tbody></table>
+        <h2>خطوات التصنيع</h2>
+        <ol>{[...product.recipe.steps].sort((a, b) => a.order - b.order).map((step, index) => <li key={`step-${index}`}><strong>{step.description}</strong>{[step.ingredient_ref, step.quantity, step.stir_speed, step.stir_time, step.temperature, step.pressure].filter(Boolean).length > 0 && <div>{[step.ingredient_ref && `الخامة: ${step.ingredient_ref}`, step.quantity && `الكمية: ${step.quantity}`, step.stir_speed && `السرعة: ${step.stir_speed}`, step.stir_time && `المدة: ${step.stir_time}`, step.temperature && `الحرارة: ${step.temperature}`, step.pressure && `الضغط: ${step.pressure}`].filter(Boolean).join(" · ")}</div>}</li>)}</ol>
         {product.notes && <section className="print-block"><h3>ملاحظات</h3><p>{product.notes}</p></section>}
       </PrintReport>
       <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
