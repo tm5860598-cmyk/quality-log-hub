@@ -396,7 +396,7 @@ function ProductDetail({
         onClose={() => setShowQr(false)}
         title={product.name}
         subtitle={[product.code, product.product_type, product.package_size].filter(Boolean).join(" · ")}
-        payload={JSON.stringify({ id: product.id, code: product.code, name: product.name, type: product.product_type, size: product.package_size })}
+        productId={product.id}
       />
       <SopDialog
         open={showSop}
