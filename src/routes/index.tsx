@@ -563,6 +563,14 @@ function HubView({ lang, username }: { lang: Lang; username?: string }) {
       category: d.key,
       ...(d.key === QUALITY_HUB_KEY ? { href: "/quality-hub" } : {}),
     })),
+    {
+      key: "convert-media",
+      title: t("تحويل الملفات إلى صوت وفيديو", "Files to Audio & Video"),
+      desc: t("حوّل PDF وWord وExcel وPowerPoint والصور إلى صوت وفيديو محليًا", "Convert documents and images to audio & video locally"),
+      gradient: "from-teal-600 to-cyan-700",
+      emoji: "🎬",
+      href: "/convert",
+    },
     ...(role === "owner"
       ? [{
           key: "manage-depts",
