@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as ConvertRouteImport } from './routes/convert'
 import { Route as ManufacturingRouteImport } from './routes/manufacturing'
 import { Route as NcrRouteImport } from './routes/ncr'
 import { Route as QualityHubRouteImport } from './routes/quality-hub'
@@ -32,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConvertRoute = ConvertRouteImport.update({
+  id: '/convert',
+  path: '/convert',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManufacturingRoute = ManufacturingRouteImport.update({
@@ -98,6 +104,7 @@ const ApiPublicTimeRoute = ApiPublicTimeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/convert': typeof ConvertRoute
   '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
   '/quality-hub': typeof QualityHubRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/convert': typeof ConvertRoute
   '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
   '/quality-hub': typeof QualityHubRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/convert': typeof ConvertRoute
   '/manufacturing': typeof ManufacturingRoute
   '/ncr': typeof NcrRoute
   '/quality-hub': typeof QualityHubRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chat'
+    | '/convert'
     | '/manufacturing'
     | '/ncr'
     | '/quality-hub'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/convert'
     | '/manufacturing'
     | '/ncr'
     | '/quality-hub'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/chat'
+    | '/convert'
     | '/manufacturing'
     | '/ncr'
     | '/quality-hub'
@@ -196,6 +208,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRouteWithChildren
+  ConvertRoute: typeof ConvertRoute
   ManufacturingRoute: typeof ManufacturingRoute
   NcrRoute: typeof NcrRoute
   QualityHubRoute: typeof QualityHubRoute
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/convert': {
+      id: '/convert'
+      path: '/convert'
+      fullPath: '/convert'
+      preLoaderRoute: typeof ConvertRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manufacturing': {
@@ -326,6 +346,7 @@ const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRouteWithChildren,
+  ConvertRoute: ConvertRoute,
   ManufacturingRoute: ManufacturingRoute,
   NcrRoute: NcrRoute,
   QualityHubRoute: QualityHubRoute,
