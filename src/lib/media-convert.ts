@@ -142,6 +142,7 @@ export type SpeechResult = { wav: Blob; buffer: AudioBuffer; timings: Array<{ se
 
 export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSignal, onP: Progress): Promise<SpeechResult> {
   const tts = await import("@mintplex-labs/piper-tts-web");
+  tts.TtsSession.WASM_LOCATIONS = { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/" };
   const ctx = new AudioContext();
   const parts: AudioBuffer[] = [];
   try {
