@@ -252,12 +252,23 @@ export async function renderVideo(sp: SpeechResult, ratio: "16:9" | "9:16", titl
     signal.addEventListener("abort", onAbort, { once: true });
     rec.onstop = () => { finish(); signal.removeEventListener("abort", onAbort); resolve({ blob: new Blob(chunks, { type: mime.split(";")[0] || "video/webm" }), ext }); };
     rec.onerror = () => { finish(); reject(new Error("فشل تسجيل الفيديو")); };
+    let wake: any = null;
+    (navigator as any).wakeLock?.request?.("screen").then((w: any) => (wake = w)).catch(() => {});
+    const stopRec = () => { try { wake?.release?.(); } catch {} ; if (rec.state !== "inactive") { try { rec.requestData(); } catch {} ; rec.stop(); } };
+    const w0 = performance.now();
     const t0 = ac.currentTime;
-    // interval keeps drawing even when the tab is in background (rAF pauses)
-    const tick = () => { const t = ac.currentTime - t0; draw(t); onP((t / duration) * 100, "إنشاء الفيديو…"); };
+    // Use audio clock when running, fall back to wall clock (iOS/mobile may keep AudioContext suspended)
+    const tick = () => {
+      const wall = (performance.now() - w0) / 1000;
+      const t = ac.state === "running" ? Math.max(ac.currentTime - t0, 0) : wall;
+      draw(Math.min(t, duration));
+      onP((t / duration) * 100, "إنشاء الفيديو…");
+      if (t >= duration + 0.5 || wall >= duration + 3) stopRec();
+    };
     const iv = setInterval(tick, 1000 / 30);
-    srcNode.onended = () => setTimeout(() => rec.state !== "inactive" && rec.stop(), 300);
+    srcNode.onended = () => setTimeout(stopRec, 300);
     rec.start(1000);
     srcNode.start();
+    ac.resume().catch(() => {});
   });
 }
