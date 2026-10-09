@@ -213,7 +213,7 @@ export async function renderVideo(sp: SpeechResult, ratio: "16:9" | "9:16", titl
   canvas.width = W; canvas.height = H;
   const g = canvas.getContext("2d")!;
   const ac = new AudioContext();
-  await ac.resume();
+  await Promise.race([ac.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
   const dest = ac.createMediaStreamDestination();
   const srcNode = ac.createBufferSource();
   srcNode.buffer = sp.buffer;
