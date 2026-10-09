@@ -142,16 +142,22 @@ export type SpeechResult = { wav: Blob; buffer: AudioBuffer; timings: Array<{ se
 
 export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSignal, onP: Progress): Promise<SpeechResult> {
   const tts = await import("@mintplex-labs/piper-tts-web");
-  tts.TtsSession.WASM_LOCATIONS = { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/" };
+  onP(0, "تحميل محرك الصوت المحلي (مرة واحدة فقط)…");
+  if (tts.TtsSession._instance && tts.TtsSession._instance.voiceId !== VOICE_ID[voice]) tts.TtsSession._instance = null;
+  const session =
+    tts.TtsSession._instance ??
+    (await tts.TtsSession.create({
+      voiceId: VOICE_ID[voice] as any,
+      progress: (p: any) => p?.total && onP((p.loaded / p.total) * 100, "تحميل نموذج الصوت…"),
+      wasmPaths: { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/" },
+    }));
   const ctx = new AudioContext();
   const parts: AudioBuffer[] = [];
   try {
     for (let i = 0; i < segs.length; i++) {
       checkAbort(signal);
       onP((i / segs.length) * 100, i === 0 ? "تحميل محرك الصوت المحلي (مرة واحدة فقط)…" : `توليد الصوت ${i + 1} من ${segs.length}`);
-      const blob = await tts.predict({ text: segs[i].text, voiceId: VOICE_ID[voice] as any }, (p: any) => {
-        if (i === 0 && p?.total) onP((p.loaded / p.total) * 100, "تحميل نموذج الصوت…");
-      });
+      const blob = await session.predict(segs[i].text);
       parts.push(await ctx.decodeAudioData(await blob.arrayBuffer()));
     }
     const rate = parts[0].sampleRate;
