@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import type { Segment, SpeechResult, Voice } from "@/lib/media-convert.client";
+import type { Segment, SpeechResult, Voice } from "@/lib/media-convert";
 
 export const Route = createFileRoute("/convert")({
   head: () => ({
@@ -48,14 +48,14 @@ function ConvertPage() {
   async function pick(f: File | null) {
     setFile(f); setSegs(null); setAudio(null); setVideo(null); setError("");
     if (!f) return;
-    const m = await import("@/lib/media-convert.client");
+    const m = await import("@/lib/media-convert");
     const r = await run("extract", (sig) => m.extractFile(f, sig, onP));
     if (r) { setSegs(r); if (!/[\u0600-\u06FF]/.test(r.map((x) => x.text).join(" "))) setVoice("en"); }
   }
 
   async function makeAudio(): Promise<SpeechResult | null> {
     if (!segs) return null;
-    const m = await import("@/lib/media-convert.client");
+    const m = await import("@/lib/media-convert");
     const sp = await run("audio", (sig) => m.synthesize(m.splitSegments(segs), voice, sig, onP));
     if (sp) { if (audio) URL.revokeObjectURL(audio.url); setAudio({ url: URL.createObjectURL(sp.wav), sp }); }
     return sp;
@@ -64,7 +64,7 @@ function ConvertPage() {
   async function makeVideo() {
     const sp = audio?.sp ?? (await makeAudio());
     if (!sp) return;
-    const m = await import("@/lib/media-convert.client");
+    const m = await import("@/lib/media-convert");
     const r = await run("video", (sig) => m.renderVideo(sp, ratio, baseName, sig, onP));
     if (r) { if (video) URL.revokeObjectURL(video.url); setVideo({ url: URL.createObjectURL(r.blob), ext: r.ext }); }
   }
