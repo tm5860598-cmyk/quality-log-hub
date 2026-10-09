@@ -142,6 +142,11 @@ export type SpeechResult = { wav: Blob; buffer: AudioBuffer; timings: Array<{ se
 
 export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSignal, onP: Progress): Promise<SpeechResult> {
   const tts = await import("@mintplex-labs/piper-tts-web");
+  const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
+  (tts.TtsSession.WASM_LOCATIONS as any).onnxWasm = ORT;
+  const ortMod: any = await import("onnxruntime-web/wasm");
+  const ort = ortMod.default || ortMod;
+  if (ort?.env?.wasm) ort.env.wasm.wasmPaths = ORT;
   onP(0, "تحميل محرك الصوت المحلي (مرة واحدة فقط)…");
   if (tts.TtsSession._instance && tts.TtsSession._instance.voiceId !== VOICE_ID[voice]) tts.TtsSession._instance = null;
   const session =
@@ -149,7 +154,7 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
     (await tts.TtsSession.create({
       voiceId: VOICE_ID[voice] as any,
       progress: (p: any) => p?.total && onP((p.loaded / p.total) * 100, "تحميل نموذج الصوت…"),
-      wasmPaths: { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/" },
+      wasmPaths: { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: ORT },
     }));
   const ctx = new AudioContext();
   const parts: AudioBuffer[] = [];
