@@ -125,20 +125,36 @@ export function splitSegments(segs: Segment[]): Segment[] {
 export type Voice = "ar-eg" | "ar" | "en";
 const VOICE_ID: Record<Voice, string> = { "ar-eg": "ar_JO-kareem-medium", ar: "ar_JO-kareem-medium", en: "en_US-hfc_female-medium" };
 
-function encodeWav(buf: AudioBuffer): Blob {
-  const ch = buf.getChannelData(0);
-  const ab = new ArrayBuffer(44 + ch.length * 2);
-  const v = new DataView(ab);
+function encodeWav(pcm: Int16Array, rate: number): Blob {
+  const header = new ArrayBuffer(44);
+  const v = new DataView(header);
   const w = (o: number, s: string) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
-  w(0, "RIFF"); v.setUint32(4, 36 + ch.length * 2, true); w(8, "WAVE"); w(12, "fmt ");
+  w(0, "RIFF"); v.setUint32(4, 36 + pcm.length * 2, true); w(8, "WAVE"); w(12, "fmt ");
   v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, buf.sampleRate, true); v.setUint32(28, buf.sampleRate * 2, true);
-  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, ch.length * 2, true);
-  for (let i = 0; i < ch.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 0x7fff, true);
-  return new Blob([ab], { type: "audio/wav" });
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, pcm.length * 2, true);
+  return new Blob([header, pcm.buffer as ArrayBuffer], { type: "audio/wav" });
 }
 
-export type SpeechResult = { wav: Blob; buffer: AudioBuffer; timings: Array<{ seg: Segment; start: number; end: number }> };
+/** Parse a 16-bit PCM mono WAV directly (low memory, no AudioContext). */
+function parseWav(ab: ArrayBuffer): { pcm: Int16Array; rate: number } | null {
+  const v = new DataView(ab);
+  if (ab.byteLength < 44 || v.getUint32(0, false) !== 0x52494646) return null;
+  let off = 12, rate = 0, bits = 0, chans = 0;
+  while (off + 8 <= ab.byteLength) {
+    const id = v.getUint32(off, false), size = v.getUint32(off + 4, true);
+    if (id === 0x666d7420) { chans = v.getUint16(off + 10, true); rate = v.getUint32(off + 12, true); bits = v.getUint16(off + 22, true); }
+    if (id === 0x64617461) {
+      if (bits !== 16 || chans !== 1 || !rate) return null;
+      const len = Math.min(size, ab.byteLength - off - 8) >> 1;
+      return { pcm: new Int16Array(ab.slice(off + 8, off + 8 + len * 2)), rate };
+    }
+    off += 8 + size + (size & 1);
+  }
+  return null;
+}
+
+export type SpeechResult = { wav: Blob; pcm: Int16Array; rate: number; duration: number; timings: Array<{ seg: Segment; start: number; end: number }> };
 
 export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSignal, onP: Progress): Promise<SpeechResult> {
   const tts = await import("@mintplex-labs/piper-tts-web");
@@ -146,7 +162,7 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
   (tts.TtsSession.WASM_LOCATIONS as any).onnxWasm = ORT;
   const ortMod: any = await import("onnxruntime-web/wasm");
   const ort = ortMod.default || ortMod;
-  if (ort?.env?.wasm) ort.env.wasm.wasmPaths = ORT;
+  if (ort?.env?.wasm) { ort.env.wasm.wasmPaths = ORT; ort.env.wasm.numThreads = 1; }
   onP(0, "تحميل محرك الصوت المحلي (مرة واحدة فقط)…");
   if (tts.TtsSession._instance && tts.TtsSession._instance.voiceId !== VOICE_ID[voice]) tts.TtsSession._instance = null;
   const session =
@@ -156,30 +172,41 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
       progress: (p: any) => p?.total && onP((p.loaded / p.total) * 100, "تحميل نموذج الصوت…"),
       wasmPaths: { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: ORT },
     }));
-  const ctx = new AudioContext();
-  const parts: AudioBuffer[] = [];
+  let fallbackCtx: AudioContext | null = null;
+  const parts: Int16Array[] = [];
+  let rate = 0;
   try {
     for (let i = 0; i < segs.length; i++) {
       checkAbort(signal);
       onP((i / segs.length) * 100, i === 0 ? "تحميل محرك الصوت المحلي (مرة واحدة فقط)…" : `توليد الصوت ${i + 1} من ${segs.length}`);
-      const blob = await session.predict(segs[i].text);
-      parts.push(await ctx.decodeAudioData(await blob.arrayBuffer()));
+      const ab = await (await session.predict(segs[i].text)).arrayBuffer();
+      let p = parseWav(ab);
+      if (!p) {
+        fallbackCtx ??= new AudioContext({ sampleRate: rate || 22050 });
+        const b = await fallbackCtx.decodeAudioData(ab);
+        const f = b.getChannelData(0), pcm = new Int16Array(f.length);
+        for (let k = 0; k < f.length; k++) pcm[k] = Math.max(-1, Math.min(1, f[k])) * 0x7fff;
+        p = { pcm, rate: b.sampleRate };
+      }
+      rate ||= p.rate;
+      parts.push(p.pcm);
+      // yield so the page stays responsive on phones
+      await new Promise((r) => setTimeout(r, 0));
     }
-    const rate = parts[0].sampleRate;
     const gap = Math.round(rate * 0.25);
     const total = parts.reduce((n, b) => n + b.length + gap, 0);
-    const out = ctx.createBuffer(1, total, rate);
-    const data = out.getChannelData(0);
+    const pcm = new Int16Array(total);
     const timings: SpeechResult["timings"] = [];
     let off = 0;
     parts.forEach((b, i) => {
-      data.set(b.getChannelData(0), off);
+      pcm.set(b, off);
       timings.push({ seg: segs[i], start: off / rate, end: (off + b.length + gap) / rate });
       off += b.length + gap;
+      parts[i] = new Int16Array(0);
     });
-    return { wav: encodeWav(out), buffer: out, timings };
+    return { wav: encodeWav(pcm, rate), pcm, rate, duration: total / rate, timings };
   } finally {
-    ctx.close().catch(() => {});
+    fallbackCtx?.close().catch(() => {});
   }
 }
 
@@ -208,38 +235,54 @@ export function pickVideoMime(): { mime: string; ext: string } {
 
 export async function renderVideo(sp: SpeechResult, ratio: "16:9" | "9:16", title: string, signal: AbortSignal, onP: Progress) {
   if (typeof MediaRecorder === "undefined") throw new Error("المتصفح لا يدعم تسجيل الفيديو");
-  const [W, H] = ratio === "16:9" ? [1280, 720] : [720, 1280];
+  // Lower resolution/fps keeps memory low on phones (prevents the browser from reloading the tab)
+  const [W, H] = ratio === "16:9" ? [960, 540] : [540, 960];
+  const FPS = 15;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const g = canvas.getContext("2d")!;
-  const ac = new AudioContext();
+  const ac = new AudioContext({ sampleRate: sp.rate });
   await Promise.race([ac.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
   const dest = ac.createMediaStreamDestination();
+  const audioBuf = ac.createBuffer(1, sp.pcm.length, sp.rate);
+  const ch = audioBuf.getChannelData(0);
+  for (let i = 0; i < sp.pcm.length; i++) ch[i] = sp.pcm[i] / 0x7fff;
   const srcNode = ac.createBufferSource();
-  srcNode.buffer = sp.buffer;
+  srcNode.buffer = audioBuf;
   srcNode.connect(dest);
-  const stream = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const stream = new MediaStream([...canvas.captureStream(FPS).getVideoTracks(), ...dest.stream.getAudioTracks()]);
   const { mime, ext } = pickVideoMime();
-  const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 2_500_000 } : undefined);
+  const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 1_000_000, audioBitsPerSecond: 64_000 } : undefined);
   const chunks: Blob[] = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-  const duration = sp.buffer.duration;
+  const duration = sp.duration;
 
-  const draw = (t: number) => {
-    const cur = sp.timings.find((x) => t >= x.start && t < x.end) ?? sp.timings[sp.timings.length - 1];
-    const grd = g.createLinearGradient(0, 0, W, H);
+  // Pre-render the slide (background + text) once per segment; per frame only blit + progress bar.
+  const slide = document.createElement("canvas");
+  slide.width = W; slide.height = H;
+  const s = slide.getContext("2d")!;
+  let curIdx = -1;
+  const paintSlide = (idx: number) => {
+    const cur = sp.timings[idx];
+    const grd = s.createLinearGradient(0, 0, W, H);
     grd.addColorStop(0, "#0f2a44"); grd.addColorStop(1, "#134e4a");
-    g.fillStyle = grd; g.fillRect(0, 0, W, H);
+    s.fillStyle = grd; s.fillRect(0, 0, W, H);
     const rtl = /[\u0600-\u06FF]/.test(cur.seg.text);
-    g.direction = rtl ? "rtl" : "ltr";
-    g.textAlign = rtl ? "right" : "left";
+    s.direction = rtl ? "rtl" : "ltr";
+    s.textAlign = rtl ? "right" : "left";
     const pad = W * 0.07, x = rtl ? W - pad : pad;
-    g.fillStyle = "#99f6e4"; g.font = `bold ${Math.round(W * 0.028)}px Tahoma, Arial`;
-    g.fillText(`${title} — صفحة ${cur.seg.page}`, x, H * 0.09);
+    s.fillStyle = "#99f6e4"; s.font = `bold ${Math.round(W * 0.028)}px Tahoma, Arial`;
+    s.fillText(`${title} — صفحة ${cur.seg.page}`, x, H * 0.09);
     const fs = Math.round(Math.min(W, H) * 0.048);
-    g.font = `${fs}px Tahoma, Arial`; g.fillStyle = "#ffffff";
-    const lines = wrap(g, cur.seg.text, W - pad * 2).slice(0, Math.floor((H * 0.72) / (fs * 1.6)));
-    lines.forEach((l, i) => g.fillText(l, x, H * 0.18 + fs + i * fs * 1.6));
+    s.font = `${fs}px Tahoma, Arial`; s.fillStyle = "#ffffff";
+    const lines = wrap(s, cur.seg.text, W - pad * 2).slice(0, Math.floor((H * 0.72) / (fs * 1.6)));
+    lines.forEach((l, i) => s.fillText(l, x, H * 0.18 + fs + i * fs * 1.6));
+  };
+  const draw = (t: number) => {
+    let idx = sp.timings.findIndex((x) => t >= x.start && t < x.end);
+    if (idx < 0) idx = sp.timings.length - 1;
+    if (idx !== curIdx) { curIdx = idx; paintSlide(idx); }
+    g.drawImage(slide, 0, 0);
     g.fillStyle = "rgba(255,255,255,.2)"; g.fillRect(0, H - 10, W, 10);
     g.fillStyle = "#2dd4bf"; g.fillRect(0, H - 10, W * Math.min(1, t / duration), 10);
   };
