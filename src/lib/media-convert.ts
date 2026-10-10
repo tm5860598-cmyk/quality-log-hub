@@ -48,6 +48,7 @@ async function extractPdf(bytes: Uint8Array, signal: AbortSignal, onP: Progress)
       await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
       onP((i / pdf.numPages) * 100, `قراءة صفحة مصوّرة ${i} (OCR)`);
       text = await ocrCanvasOrBlob(c, signal);
+      c.width = 0; c.height = 0; page.cleanup();
     }
     if (text) out.push({ page: i, text });
   }
@@ -308,7 +309,7 @@ export async function renderVideo(sp: SpeechResult, ratio: "16:9" | "9:16", titl
       onP((t / duration) * 100, "إنشاء الفيديو…");
       if (t >= duration + 0.5 || wall >= duration + 3) stopRec();
     };
-    const iv = setInterval(tick, 1000 / 30);
+    const iv = setInterval(tick, 1000 / FPS);
     srcNode.onended = () => setTimeout(stopRec, 300);
     rec.start(1000);
     srcNode.start();
