@@ -77,6 +77,7 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
+  const [printIds, setPrintIds] = useState<Set<string> | null>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, [threadId, status]);
 
@@ -102,11 +103,23 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
     await sendMessage({ text });
   };
 
+  const printSingle = (answerId: string) => {
+    const idx = messages.findIndex((x) => x.id === answerId);
+    let q = idx - 1;
+    while (q >= 0 && messages[q].role !== "user") q--;
+    setPrintIds(new Set([answerId, ...(q >= 0 ? [messages[q].id] : [])]));
+    setTimeout(() => {
+      window.print();
+      setPrintIds(null);
+    }, 50);
+  };
+  const printMessages = printIds ? messages.filter((m) => printIds.has(m.id)) : messages;
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Standalone full-length print layout (outside every scroll container). */}
       <PrintReport title="تقرير الدردشة" department={deptLabel} product={reportTitle || undefined} meta={printMeta.filter((item) => !["القسم", "المنتج / الموضوع", "التاريخ"].includes(item.label))}>
-        {messages.map((m) => (
+        {printMessages.map((m) => (
           <section key={`p-${m.id}`} className="print-block">
             <div className="print-block-label">{m.role === "user" ? "السؤال:" : "التقرير:"}</div>
             {m.role === "user" ? (
@@ -157,6 +170,13 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
                     <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
                   ) : (
                     <MarkdownView>{text || "..."}</MarkdownView>
+                  )}
+                  {!isUser && text && (
+                    <div className="mt-2 flex justify-end print:hidden">
+                      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => printSingle(m.id)}>
+                        <Printer className="size-3.5" /> طباعة هذا السؤال والإجابة
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
