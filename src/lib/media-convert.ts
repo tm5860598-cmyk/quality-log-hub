@@ -14,17 +14,25 @@ const xmlText = (xml: string, para: RegExp) =>
     .replace(/<[^>]+>/g, "")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
 
+// Reuse one OCR worker across pages/files (creating it is the slowest step).
+let ocrWorker: Promise<any> | null = null;
+const getOcr = async () => {
+  if (!ocrWorker) {
+    ocrWorker = import("tesseract.js").then(({ createWorker }) => createWorker(["ara", "eng"]));
+    ocrWorker.catch(() => (ocrWorker = null));
+  }
+  return ocrWorker;
+};
 async function ocrCanvasOrBlob(src: HTMLCanvasElement | Blob, signal: AbortSignal): Promise<string> {
-  const { createWorker } = await import("tesseract.js");
-  const worker = await createWorker(["ara", "eng"]);
-  const onAbort = () => worker.terminate();
+  const worker = await getOcr();
+  checkAbort(signal);
+  const onAbort = () => { worker.terminate(); ocrWorker = null; };
   signal.addEventListener("abort", onAbort, { once: true });
   try {
     const { data } = await worker.recognize(src as any);
     return clean(data.text || "");
   } finally {
     signal.removeEventListener("abort", onAbort);
-    await worker.terminate().catch(() => {});
   }
 }
 
@@ -42,7 +50,7 @@ async function extractPdf(bytes: Uint8Array, signal: AbortSignal, onP: Progress)
     let text = clean(tc.items.map((it: any) => (it.str ?? "") + (it.hasEOL ? "\n" : " ")).join(""));
     if (text.length < 20) {
       // scanned page -> local OCR
-      const vp = page.getViewport({ scale: 2 });
+      const vp = page.getViewport({ scale: 1.5 });
       const c = document.createElement("canvas");
       c.width = vp.width; c.height = vp.height;
       await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
