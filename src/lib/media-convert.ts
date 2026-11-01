@@ -115,18 +115,26 @@ export async function extractFile(file: File, signal: AbortSignal, onP: Progress
   return segs;
 }
 
-/** Split into speakable chunks (~350 chars) keeping page numbers. */
-export function splitSegments(segs: Segment[]): Segment[] {
+/** Split into speakable chunks (small chunks keep the local TTS engine within memory limits). */
+export function splitSegments(segs: Segment[], maxLen = 200): Segment[] {
   const out: Segment[] = [];
   for (const s of segs) {
-    const sentences = s.text.split(/(?<=[.!?؟。\n])\s+/);
+    // Break at Arabic + English punctuation and newlines first, then at word boundaries.
+    const sentences = s.text.split(/(?<=[.!?؟،؛:…\n])\s+/);
     let buf = "";
+    const flush = () => { if (buf.trim()) { out.push({ page: s.page, text: buf.trim() }); buf = ""; } };
     for (const sen of sentences) {
-      if (buf && (buf + " " + sen).length > 350) { out.push({ page: s.page, text: buf.trim() }); buf = sen; }
-      else buf = buf ? buf + " " + sen : sen;
-      while (buf.length > 500) { out.push({ page: s.page, text: buf.slice(0, 450) }); buf = buf.slice(450); }
+      if (buf && (buf + " " + sen).length > maxLen) flush();
+      buf = buf ? buf + " " + sen : sen;
+      // A single run without punctuation longer than ~1.5 chunks: cut at a space boundary.
+      while (buf.length > maxLen * 1.5) {
+        let cut = buf.lastIndexOf(" ", maxLen);
+        if (cut < maxLen * 0.5) cut = maxLen;
+        out.push({ page: s.page, text: buf.slice(0, cut).trim() });
+        buf = buf.slice(cut).trim();
+      }
     }
-    if (buf.trim()) out.push({ page: s.page, text: buf.trim() });
+    flush();
   }
   return out;
 }
