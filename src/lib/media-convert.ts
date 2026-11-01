@@ -174,55 +174,96 @@ function parseWav(ab: ArrayBuffer): { pcm: Int16Array; rate: number } | null {
 export type SpeechResult = { wav: Blob; pcm: Int16Array; rate: number; duration: number; timings: Array<{ seg: Segment; start: number; end: number }> };
 
 export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSignal, onP: Progress): Promise<SpeechResult> {
-  const tts = await import("@mintplex-labs/piper-tts-web");
-  const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
-  (tts.TtsSession.WASM_LOCATIONS as any).onnxWasm = ORT;
-  const ortMod: any = await import("onnxruntime-web/wasm");
-  const ort = ortMod.default || ortMod;
-  if (ort?.env?.wasm) { ort.env.wasm.wasmPaths = ORT; ort.env.wasm.numThreads = 1; }
-  onP(0, "تحميل محرك الصوت المحلي (مرة واحدة فقط)…");
-  if (tts.TtsSession._instance && tts.TtsSession._instance.voiceId !== VOICE_ID[voice]) tts.TtsSession._instance = null;
-  const session =
-    tts.TtsSession._instance ??
-    (await tts.TtsSession.create({
-      voiceId: VOICE_ID[voice] as any,
-      progress: (p: any) => p?.total && onP((p.loaded / p.total) * 100, "تحميل نموذج الصوت…"),
-      wasmPaths: { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: ORT },
-    }));
-  let fallbackCtx: AudioContext | null = null;
-  const parts: Int16Array[] = [];
-  let rate = 0;
+  // The local engine (Piper + onnxruntime) sizes its thread pool from
+  // navigator.hardwareConcurrency. On PCs with many cores that exhausts memory
+  // (std::bad_alloc in OrtRun). Pin it to one thread while the engine runs.
+  let savedConc: PropertyDescriptor | null = null;
   try {
+    savedConc =
+      Object.getOwnPropertyDescriptor(navigator, "hardwareConcurrency") ??
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(navigator), "hardwareConcurrency") ??
+      null;
+    Object.defineProperty(navigator, "hardwareConcurrency", { configurable: true, get: () => 1 });
+  } catch { savedConc = null; }
+  const restoreThreads = () => {
+    try { delete (navigator as any).hardwareConcurrency; } catch {}
+    if (savedConc) { try { Object.defineProperty(navigator, "hardwareConcurrency", savedConc); } catch {} }
+  };
+
+  let fallbackCtx: AudioContext | null = null;
+  try {
+    const tts = await import("@mintplex-labs/piper-tts-web");
+    const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
+    (tts.TtsSession.WASM_LOCATIONS as any).onnxWasm = ORT;
+    const ortMod: any = await import("onnxruntime-web/wasm");
+    const ort = ortMod.default || ortMod;
+    if (ort?.env?.wasm) { ort.env.wasm.wasmPaths = ORT; ort.env.wasm.numThreads = 1; ort.env.wasm.proxy = false; }
+    onP(0, "تحميل محرك الصوت المحلي (مرة واحدة فقط)…");
+    if (tts.TtsSession._instance && tts.TtsSession._instance.voiceId !== VOICE_ID[voice]) tts.TtsSession._instance = null;
+    const session =
+      tts.TtsSession._instance ??
+      (await tts.TtsSession.create({
+        voiceId: VOICE_ID[voice] as any,
+        progress: (p: any) => p?.total && onP((p.loaded / p.total) * 100, "تحميل نموذج الصوت…"),
+        wasmPaths: { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: ORT },
+      }));
+
+    const toPcm = async (ab: ArrayBuffer): Promise<{ pcm: Int16Array; rate: number }> => {
+      const p = parseWav(ab);
+      if (p) return p;
+      fallbackCtx ??= new AudioContext({ sampleRate: rate || 22050 });
+      const b = await fallbackCtx.decodeAudioData(ab);
+      const f = b.getChannelData(0), pcm = new Int16Array(f.length);
+      for (let k = 0; k < f.length; k++) pcm[k] = Math.max(-1, Math.min(1, f[k])) * 0x7fff;
+      return { pcm, rate: b.sampleRate };
+    };
+
+    // Synthesize one segment. If the engine fails (e.g. out of memory), split the
+    // text in half and retry each half instead of losing the whole conversion.
+    const synthOne = async (text: string, depth: number): Promise<{ pcms: Int16Array[]; rate: number }> => {
+      try {
+        checkAbort(signal);
+        const ab = await (await session.predict(text)).arrayBuffer();
+        const p = await toPcm(ab);
+        return { pcms: [p.pcm], rate: p.rate };
+      } catch (err) {
+        if (signal.aborted || depth >= 2 || text.length <= 80) throw err;
+        let mid = text.lastIndexOf(" ", Math.ceil(text.length / 2));
+        if (mid < 40) mid = Math.ceil(text.length / 2);
+        await new Promise((r) => setTimeout(r, 120)); // let the engine release memory
+        const a = await synthOne(text.slice(0, mid).trim(), depth + 1);
+        const b = await synthOne(text.slice(mid).trim(), depth + 1);
+        return { pcms: [...a.pcms, ...b.pcms], rate: a.rate || b.rate };
+      }
+    };
+
+    const parts: Array<{ pcm: Int16Array; seg: Segment }> = [];
+    let rate = 0;
     for (let i = 0; i < segs.length; i++) {
       checkAbort(signal);
       onP((i / segs.length) * 100, i === 0 ? "تحميل محرك الصوت المحلي (مرة واحدة فقط)…" : `توليد الصوت ${i + 1} من ${segs.length}`);
-      const ab = await (await session.predict(segs[i].text)).arrayBuffer();
-      let p = parseWav(ab);
-      if (!p) {
-        fallbackCtx ??= new AudioContext({ sampleRate: rate || 22050 });
-        const b = await fallbackCtx.decodeAudioData(ab);
-        const f = b.getChannelData(0), pcm = new Int16Array(f.length);
-        for (let k = 0; k < f.length; k++) pcm[k] = Math.max(-1, Math.min(1, f[k])) * 0x7fff;
-        p = { pcm, rate: b.sampleRate };
-      }
-      rate ||= p.rate;
-      parts.push(p.pcm);
+      const got = await synthOne(segs[i].text, 0);
+      if (!rate) rate = got.rate;
+      for (const p of got.pcms) parts.push({ pcm: p, seg: segs[i] });
       // yield so the page stays responsive on phones
       await new Promise((r) => setTimeout(r, 0));
     }
+
+    if (!rate) rate = 22050;
     const gap = Math.round(rate * 0.25);
-    const total = parts.reduce((n, b) => n + b.length + gap, 0);
+    const total = parts.reduce((n, b) => n + b.pcm.length + gap, 0);
     const pcm = new Int16Array(total);
     const timings: SpeechResult["timings"] = [];
     let off = 0;
     parts.forEach((b, i) => {
-      pcm.set(b, off);
-      timings.push({ seg: segs[i], start: off / rate, end: (off + b.length + gap) / rate });
-      off += b.length + gap;
-      parts[i] = new Int16Array(0);
+      pcm.set(b.pcm, off);
+      timings.push({ seg: b.seg, start: off / rate, end: (off + b.pcm.length + gap) / rate });
+      off += b.pcm.length + gap;
+      parts[i] = { pcm: new Int16Array(0), seg: b.seg }; // free each part after merging
     });
     return { wav: encodeWav(pcm, rate), pcm, rate, duration: total / rate, timings };
   } finally {
+    restoreThreads();
     fallbackCtx?.close().catch(() => {});
   }
 }
