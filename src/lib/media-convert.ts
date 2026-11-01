@@ -264,7 +264,7 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
     return { wav: encodeWav(pcm, rate), pcm, rate, duration: total / rate, timings };
   } finally {
     restoreThreads();
-    fallbackCtx?.close().catch(() => {});
+    (fallbackCtx as AudioContext | null)?.close().catch(() => {});
   }
 }
 
