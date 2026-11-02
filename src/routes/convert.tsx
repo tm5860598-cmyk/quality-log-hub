@@ -31,6 +31,11 @@ function ConvertPage() {
   const [video, setVideo] = useState<{ url: string; ext: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const busy = stage !== "idle";
+  const stageLabel =
+    stage === "extract" ? "جاري قراءة الملف واستخراج النص"
+    : stage === "audio" ? "جاري توليد الصوت"
+    : stage === "video" ? "جاري إنشاء الفيديو"
+    : "جاري العمل";
 
   useEffect(() => () => abortRef.current?.abort(), []);
   const onP = (p: number, l: string) => { setPct(Math.max(0, Math.min(100, Math.round(p)))); setLabel(l); };
@@ -76,9 +81,30 @@ function ConvertPage() {
     <div dir="rtl" className="min-h-screen bg-background text-foreground p-3 sm:p-6" style={{ fontFamily: "Tahoma, Arial, sans-serif" }}>
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-xl sm:text-2xl font-extrabold">🎬 تحويل الملفات إلى صوت وفيديو</h1>
+        <h1 className="text-xl sm:text-2xl font-extrabold">🎬 تحويل الملفات إلى صوت وفيديو</h1>
           <Link to="/" className="text-sm text-primary underline">الرئيسية</Link>
         </div>
+
+        {busy && (
+          <>
+            <div className="fixed top-0 inset-x-0 z-50 bg-card/95 border-b shadow-md backdrop-blur" role="status">
+              <div className="max-w-4xl mx-auto px-3 py-2.5 flex items-center gap-3">
+                <span className="h-5 w-5 shrink-0 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-hidden="true" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between text-xs sm:text-sm font-semibold gap-2">
+                    <span className="truncate">{stageLabel}…</span><span className="shrink-0">{pct}%</span>
+                  </div>
+                  <div className="h-1.5 mt-1 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+                <button onClick={() => abortRef.current?.abort()} className="text-xs px-3 py-1.5 rounded-lg border border-destructive text-destructive shrink-0 hover:bg-destructive/10">إيقاف</button>
+              </div>
+            </div>
+            <div className="h-16" aria-hidden="true" />
+          </>
+        )}
+
         <p className="text-sm text-muted-foreground">كل المعالجة تتم داخل جهازك — بدون أي رصيد ذكاء اصطناعي. يدعم PDF وWord وExcel وPowerPoint والصور والملفات النصية.</p>
 
         <section className="rounded-2xl border bg-card p-4 space-y-4 shadow-sm">
