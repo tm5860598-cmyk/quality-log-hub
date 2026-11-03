@@ -613,10 +613,21 @@ function HubView({ lang, username }: { lang: Lang; username?: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {tiles.filter((tile) => !tile.category || can(tile.category).view).map((tile) => {
           const inner = (
-            <div className={`group h-full rounded-2xl bg-gradient-to-br ${tile.gradient} p-[1.5px] shadow-lg hover:shadow-2xl transition`}>
-              <div className="h-full rounded-2xl bg-white/95 backdrop-blur p-5 flex flex-col gap-3">
-                <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${tile.gradient} text-white text-3xl shadow-md group-hover:scale-105 transition`}>
-                  <span>{tile.emoji}</span>
+            <motion.div
+              whileHover={{ y: -8, scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              className={`group relative h-full rounded-2xl bg-gradient-to-br ${tile.gradient} p-[1.5px] shadow-lg transition-shadow duration-300 hover:shadow-2xl`}
+            >
+              <div className="relative h-full rounded-2xl bg-white/95 backdrop-blur p-5 flex flex-col gap-3">
+                <div className="relative inline-flex w-14 h-14">
+                  {/* Glow behind the icon in the card's own color — visible on hover */}
+                  <div
+                    aria-hidden
+                    className={`absolute -inset-1.5 rounded-2xl bg-gradient-to-br ${tile.gradient} opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-70`}
+                  />
+                  <div className={`relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${tile.gradient} text-white text-3xl shadow-md transition-transform duration-300 group-hover:rotate-[10deg] group-hover:scale-105`}>
+                    <span>{tile.emoji}</span>
+                  </div>
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-800 text-lg leading-tight">{tile.title}</h3>
@@ -629,7 +640,7 @@ function HubView({ lang, username }: { lang: Lang; username?: string }) {
                   </span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           );
           if (tile.href) {
             return (
