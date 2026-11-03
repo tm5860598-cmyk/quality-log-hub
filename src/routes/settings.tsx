@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, Check, LayoutGrid, Plus, Printer, Upload, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, LayoutGrid, Plus, Printer, Upload, Image as ImageIcon } from "lucide-react";
 import { useDepartments, type Department } from "@/lib/departments";
 import { ROLE_OPTIONS, roleLabel } from "@/lib/roles";
 import { applyTheme, readTheme, THEMES, type ThemeMode } from "@/lib/theme";
@@ -190,31 +190,57 @@ function AppearanceSection() {
     <div className="rounded-2xl bg-card border shadow-sm p-5 space-y-4">
       <h2 className="font-bold flex items-center gap-2"><Palette className="h-4 w-4" /> مظهر المشروع</h2>
       <p className="text-sm text-muted-foreground">
-        يُطبَّق المظهر على كل الصفحات: الأزرار والجداول والكروت والقوائم والتنبيهات — ويُحفظ اختيارك على هذا الجهاز.
+        يُطبَّق المظهر على كل الصفحات: الأزرار والجداول والكروت والقوائم والتنبيهات — ويُحفظ اختيارك في هذا المتصفح (localStorage).
       </p>
-      <div className="grid gap-4 sm:grid-cols-3">
+
+      {/* 3-button toggle: ☀️ فاتح | 🌙 ليلي | 🎨 ملون */}
+      <div
+        role="group"
+        aria-label="اختيار المظهر"
+        className="inline-flex w-full max-w-md rounded-xl border bg-muted/40 p-1 gap-1"
+      >
         {THEMES.map((t) => (
-          <button key={t.value} onClick={() => pick(t.value)}
-            className={`text-start rounded-2xl border-2 p-4 transition hover:shadow-lg ${
-              mode === t.value ? "border-primary shadow-md" : "border-border"
-            }`}>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl">{t.emoji}</span>
-              {mode === t.value && <Check className="h-4 w-4 text-primary" />}
-            </div>
-            <div className="font-bold mt-2">{t.label_ar}</div>
-            <p className="text-xs text-muted-foreground mt-1">{t.desc_ar}</p>
-            <div className="mt-3 flex gap-1.5">
-              {(t.value === "light"
-                ? ["#ffffff", "#e2e8f0", "#1e293b", "#4f46e5"]
-                : t.value === "dark"
-                  ? ["#0b1220", "#1e293b", "#e2e8f0", "#38bdf8"]
-                  : ["#f3e8ff", "#a855f7", "#22d3ee", "#10b981"]
-              ).map((c) => (
-                <span key={c} className="h-5 w-5 rounded-full border" style={{ backgroundColor: c }} />
-              ))}
-            </div>
+          <button
+            key={t.value}
+            type="button"
+            aria-pressed={mode === t.value}
+            onClick={() => pick(t.value)}
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-300 ${
+              mode === t.value
+                ? "bg-primary text-primary-foreground shadow"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
+          >
+            <span aria-hidden>{t.emoji}</span>
+            {t.label_ar.replace("الوضع ", "")}
           </button>
+        ))}
+      </div>
+
+      {/* Short description of the active mode */}
+      <p className="text-xs text-muted-foreground">
+        {THEMES.find((t) => t.value === mode)?.desc_ar}
+      </p>
+
+      {/* Color preview of each mode */}
+      <div className="flex flex-wrap gap-3">
+        {THEMES.map((t) => (
+          <div
+            key={t.value}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition ${
+              mode === t.value ? "border-primary" : "border-border opacity-70"
+            }`}
+          >
+            <span className="text-sm" aria-hidden>{t.emoji}</span>
+            {(t.value === "light"
+              ? ["#F8FAFC", "#FFFFFF", "#0F172A"]
+              : t.value === "dark"
+                ? ["#020617", "#0F172A", "#F8FAFC"]
+                : ["#f3e8ff", "#a855f7", "#22d3ee"]
+            ).map((c) => (
+              <span key={c} className="h-4 w-4 rounded-full border" style={{ backgroundColor: c }} />
+            ))}
+          </div>
         ))}
       </div>
     </div>
