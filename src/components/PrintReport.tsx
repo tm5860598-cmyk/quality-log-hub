@@ -38,11 +38,13 @@ export function PrintReport({ title, department, reportNumber, product, meta, ch
 
   return createPortal(
     <div className={`print-root print-style-${settings.style_mode}`} dir="rtl" aria-hidden="true">
+      <div className="print-watermark">NFSA Compliant</div>
       <header className="print-report-head">
         {logoUrl && <img className="print-company-logo" src={logoUrl} alt="" />}
         <div className="print-report-identity">
           <div className="print-company-name">{settings.company_name}</div>
           <h1>{title || settings.default_report_title}</h1>
+          <div className="print-datetime">التاريخ والوقت: {printedAt}</div>
           {department && <div className="print-department-name">{department}</div>}
           {settings.show_company_data && settings.company_extra_data && (
             <div className="print-company-data">{settings.company_extra_data}</div>
@@ -58,7 +60,7 @@ export function PrintReport({ title, department, reportNumber, product, meta, ch
       </tbody></table>
       <main className="print-report-body rich-content">{children}</main>
       <PrintedBy username={username} printedAt={printedAt} />
-      <footer className="print-report-foot"><span>{settings.company_name} · {username || "مستخدم غير معروف"}</span><span>صفحة <span className="print-page-number" /></span></footer>
+      <footer className="print-report-foot"><span>تم إنشاء هذا التقرير من منصة {settings.company_name} — مهندس طارق</span><span>صفحة <span className="print-page-number" /> من <span className="print-total-pages" /></span></footer>
     </div>,
     document.body,
   );
