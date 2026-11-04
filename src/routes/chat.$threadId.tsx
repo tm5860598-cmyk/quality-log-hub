@@ -136,7 +136,7 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => window.print()} className="gap-1">
-            <Printer className="size-4" /> طباعة
+            <Printer className="size-4" /> طباعة كتقرير
           </Button>
           <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
             <Save className="size-3.5" /> محفوظ

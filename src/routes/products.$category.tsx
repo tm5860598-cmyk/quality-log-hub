@@ -367,7 +367,7 @@ function ProductDetail({
         </div>
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="size-4" /> طباعة
+            <Printer className="size-4" /> طباعة كتقرير
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowQr(true)}>
             <QrCode className="size-4" /> QR

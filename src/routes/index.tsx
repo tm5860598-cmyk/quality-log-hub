@@ -58,7 +58,7 @@ const T = {
     title: "تقارير المشاكل والإجراءات",
     appName: "My Favourite Project",
     date: "التاريخ", reportTitle: "عنوان التقرير", reportDetails: "تفاصيل التقرير",
-    add: "إضافة صف", save: "حفظ", print: "طباعة", pdf: "تصدير PDF", lang: "English",
+    add: "إضافة صف", save: "حفظ", print: "طباعة كتقرير", pdf: "تصدير PDF", lang: "English",
     num: "#", problem: "المشكلة", action: "الإجراء المتخذ",
     quality: "إمضاء مهندس الجودة", production: "إمضاء مهندس الإنتاج", del: "حذف",
     saved: "تم حفظ التقرير بنجاح", exported: "تم تصدير التقرير كـ PDF",
