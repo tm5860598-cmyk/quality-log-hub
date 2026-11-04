@@ -77,6 +77,8 @@ export function escapePrintHtml(value: string) {
   return value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] ?? char);
 }
 
+const CAIRO_FONT_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">`;
+
 export async function buildStandalonePrintDocument(options: {
   title: string;
   department?: string;
@@ -93,10 +95,40 @@ export async function buildStandalonePrintDocument(options: {
     ["القسم", options.department || "—"], ["المنتج", options.product || "—"],
     ["اسم المستخدم", options.username || "مستخدم غير معروف"],
   ];
-  return `<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${escapePrintHtml(options.title)}</title><style>
-    @page{size:A4;margin:28mm 14mm 20mm}*{box-sizing:border-box}body{margin:0;color:#111;font-family:Tahoma,Arial,sans-serif;font-size:11pt;line-height:1.55}
-    .head{display:flex;align-items:center;gap:14px;border-bottom:${settings.style_mode === "formal" ? "3px double #222" : "1px solid #777"};padding-bottom:10px;margin-bottom:12px}.logo{width:68px;height:68px;object-fit:contain}.identity{flex:1;text-align:center}.identity h1{margin:0;font-size:18pt}.identity h2{margin:3px 0;font-size:14pt}.company-data{white-space:pre-line;font-size:9pt;color:#444}
-    .meta{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:9.5pt}.meta th,.meta td{border:1px solid #777;padding:4px 6px;text-align:right}.meta th{background:#eee;width:16%}
-    table{width:100%;border-collapse:collapse;font-size:10pt}thead{display:table-header-group}tfoot{display:table-footer-group}tr,img,.sign,.box{break-inside:avoid;page-break-inside:avoid}th,td{border:1px solid #777;padding:5px;text-align:right;vertical-align:top}th{background:#e7e7e7}h1,h2,h3{break-after:avoid}.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.box{border:1px solid #aaa;padding:6px}.sign{margin-top:18px;padding-top:8px;border-top:1px dashed #777;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.sign>div{border-top:1px solid #777;padding-top:5px;text-align:center}ol{padding-right:22px}.foot{position:fixed;bottom:-14mm;right:0;left:0;border-top:1px solid #aaa;padding-top:4px;font-size:8.5pt;display:flex;justify-content:space-between}.page:after{content:counter(page)}
-  </style></head><body><header class="head">${logoUrl ? `<img class="logo" src="${escapePrintHtml(logoUrl)}" alt="">` : ""}<div class="identity"><h1>${escapePrintHtml(settings.company_name)}</h1><h2>${escapePrintHtml(options.title || settings.default_report_title)}</h2>${options.department ? `<div>${escapePrintHtml(options.department)}</div>` : ""}${settings.show_company_data && settings.company_extra_data ? `<div class="company-data">${escapePrintHtml(settings.company_extra_data)}</div>` : ""}</div></header><table class="meta"><tbody>${meta.map(([label, value], i) => i % 2 === 0 ? `<tr><th>${label}</th><td>${escapePrintHtml(value)}</td>${meta[i + 1] ? `<th>${meta[i + 1][0]}</th><td>${escapePrintHtml(meta[i + 1][1])}</td>` : "<th></th><td></td>"}</tr>` : "").join("")}</tbody></table><main>${options.bodyHtml}</main><div class="sign">تمت الطباعة بواسطة: <b>${escapePrintHtml(options.username || "مستخدم غير معروف")}</b><br>تاريخ ووقت الطباعة: ${escapePrintHtml(printedAt)}</div><footer class="foot"><span>${escapePrintHtml(settings.company_name)} · ${escapePrintHtml(options.username || "مستخدم غير معروف")}</span><span>صفحة <span class="page"></span></span></footer></body></html>`;
+  const formal = settings.style_mode === "formal";
+  return `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${escapePrintHtml(options.title)}</title>${CAIRO_FONT_LINKS}<style>
+    @page{size:A4;margin:2cm}
+    *{box-sizing:border-box}
+    body{margin:0;color:#334155;font-family:Cairo,Tahoma,Arial,sans-serif;font-size:11pt;font-weight:400;line-height:1.8}
+    .watermark{position:fixed;top:45%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:64pt;font-weight:800;letter-spacing:4pt;color:rgba(100,116,139,.10);white-space:nowrap;z-index:-1;pointer-events:none}
+    .head{display:flex;align-items:center;gap:14px;border-bottom:${formal ? "3px double #222" : "1px solid #777"};padding-bottom:10px;margin-bottom:12px}
+    .logo{width:68px;height:68px;object-fit:contain}
+    .identity{flex:1;text-align:center}
+    .identity h1{margin:0;font-size:16pt;font-weight:800;color:#000;font-family:Cairo,Tahoma,Arial,sans-serif}
+    .identity h2{margin:3px 0;font-size:14pt;font-weight:700;color:#1E293B;font-family:Cairo,Tahoma,Arial,sans-serif}
+    .datetime{font-size:9pt;color:#475569;margin-top:2px}
+    .company-data{white-space:pre-line;font-size:9pt;color:#475569}
+    .meta{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:9.5pt}
+    .meta th,.meta td{border:1px solid #000;padding:4px 6px;text-align:right;color:#334155}
+    .meta th{background:#F1F5F9;color:#0F172A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    main h1{font-size:22pt;font-weight:800;color:#000;font-family:Cairo,Tahoma,Arial,sans-serif;border-bottom:2px solid #000;padding-bottom:4pt;margin:14pt 0 8pt;break-before:page;page-break-before:always}
+    main h1:first-child{break-before:auto;page-break-before:auto}
+    main h2{font-size:14pt;font-weight:700;color:#1E293B;margin:12pt 0 6pt}
+    main h3{font-size:12pt;font-weight:700;color:#1E293B}
+    main p,main li{font-size:11pt;font-weight:400;color:#334155;line-height:1.8}
+    table{width:100%;border-collapse:collapse;font-size:10.5pt}
+    thead{display:table-header-group}tfoot{display:table-footer-group}
+    tr,img,.sign,.box{break-inside:avoid;page-break-inside:avoid}
+    th,td{border:1px solid #000;padding:5px;text-align:right;vertical-align:top;color:#000}
+    th{background:#F1F5F9;color:#0F172A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    h1,h2,h3{break-after:avoid;page-break-after:avoid}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .box{border:1px solid #000;padding:6px}
+    .sign{margin-top:18px;padding-top:8px;border-top:1px dashed #777;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;color:#334155}
+    .sign>div{border-top:1px solid #000;padding-top:5px;text-align:center}
+    ol{padding-right:22px}
+    .foot{position:fixed;bottom:-14mm;right:0;left:0;border-top:1px solid #999;padding-top:4px;font-size:8.5pt;display:flex;justify-content:space-between;color:#334155}
+    .page:after{content:counter(page)}
+    .total:after{content:counter(pages)}
+  </style></head><body><div class="watermark">NFSA Compliant</div><header class="head">${logoUrl ? `<img class="logo" src="${escapePrintHtml(logoUrl)}" alt="">` : ""}<div class="identity"><h1>${escapePrintHtml(settings.company_name)}</h1><h2>${escapePrintHtml(options.title || settings.default_report_title)}</h2><div class="datetime">التاريخ والوقت: ${escapePrintHtml(printedAt)}</div>${options.department ? `<div>${escapePrintHtml(options.department)}</div>` : ""}${settings.show_company_data && settings.company_extra_data ? `<div class="company-data">${escapePrintHtml(settings.company_extra_data)}</div>` : ""}</div></header><table class="meta"><tbody>${meta.map(([label, value], i) => i % 2 === 0 ? `<tr><th>${label}</th><td>${escapePrintHtml(value)}</td>${meta[i + 1] ? `<th>${meta[i + 1][0]}</th><td>${escapePrintHtml(meta[i + 1][1])}</td>` : "<th></th><td></td>"}</tr>` : "").join("")}</tbody></table><main>${options.bodyHtml}</main><div class="sign">تمت الطباعة بواسطة: <b>${escapePrintHtml(options.username || "مستخدم غير معروف")}</b><br>تاريخ ووقت الطباعة: ${escapePrintHtml(printedAt)}</div><footer class="foot"><span>تم إنشاء هذا التقرير من منصة ${escapePrintHtml(settings.company_name)} — مهندس طارق</span><span>صفحة <span class="page"></span> من <span class="total"></span></span></footer></body></html>`;
 }
