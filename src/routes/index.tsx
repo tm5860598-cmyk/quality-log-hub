@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import {
   Languages, Plus, Save, Printer, FileDown, Trash2,
   LogOut, FileText, LogIn, UserPlus, FolderOpen, Sparkles, Settings as SettingsIcon,
+  Bell, Search, X, Layers, Clock, Film, MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -305,7 +306,8 @@ function AppScreen({
   return (
     <div className="p-4 md:p-6 print:p-0">
       <div className="mx-auto max-w-6xl">
-        {/* Header */}
+        {/* Header — hidden on the dashboard tab, which has its own dark header */}
+        {tab !== "hub" && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-indigo-600 via-sky-600 to-emerald-600 bg-clip-text text-transparent">
@@ -330,6 +332,7 @@ function AppScreen({
             </Button>
           </div>
         </div>
+        )}
 
         {/* Tabs — reports workspace only (reached from the General Quality hub) */}
         {tab !== "hub" && (
@@ -351,7 +354,7 @@ function AppScreen({
           </div>
         )}
 
-        {tab === "hub" && <HubView lang={lang} username={username} />}
+        {tab === "hub" && <Dashboard lang={lang} setLang={setLang} username={username} />}
         {tab === "editor" && (
           <EditorView
             t={t} lang={lang} dir={dir}
@@ -539,129 +542,440 @@ function ReportsList({
 }
 
 
-function HubView({ lang, username }: { lang: Lang; username?: string }) {
+/* ============================== Dashboard ============================== */
+
+const DASH_FILE_STYLE: Record<string, { label: string; cls: string }> = {
+  pdf: { label: "PDF", cls: "bg-rose-500/20 text-rose-300 border-rose-400/30" },
+  doc: { label: "DOC", cls: "bg-sky-500/20 text-sky-300 border-sky-400/30" },
+  docx: { label: "DOC", cls: "bg-sky-500/20 text-sky-300 border-sky-400/30" },
+  xls: { label: "XLS", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30" },
+  xlsx: { label: "XLS", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30" },
+  csv: { label: "CSV", cls: "bg-amber-500/20 text-amber-300 border-amber-400/30" },
+  ppt: { label: "PPT", cls: "bg-orange-500/20 text-orange-300 border-orange-400/30" },
+  pptx: { label: "PPT", cls: "bg-orange-500/20 text-orange-300 border-orange-400/30" },
+};
+const DASH_IMG_FILE = { label: "IMG", cls: "bg-violet-500/20 text-violet-300 border-violet-400/30" };
+const DASH_FALLBACK_FILE = { label: "FILE", cls: "bg-slate-500/20 text-slate-300 border-slate-400/30" };
+
+function dashFileMeta(name: string) {
+  const e = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["png", "jpg", "jpeg", "webp", "gif"].includes(e)) return DASH_IMG_FILE;
+  return DASH_FILE_STYLE[e] ?? DASH_FALLBACK_FILE;
+}
+
+function dashSize(n: number | null | undefined) {
+  if (!n) return "—";
+  if (n < 1024) return `${n} بايت`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} ك.ب`;
+  return `${(n / 1024 / 1024).toFixed(1)} م.ب`;
+}
+
+function dashRelTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diff / 60000);
+  if (m < 1) return "الآن";
+  if (m < 60) return `منذ ${m} دقيقة`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `منذ ${h} ساعة`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `منذ ${d} يوم`;
+  return new Date(iso).toLocaleDateString("ar-EG");
+}
+
+function dashFilesLabel(n: number, lang: Lang) {
+  if (lang === "en") return `${n} file${n === 1 ? "" : "s"}`;
+  if (n === 0) return "لا ملفات بعد";
+  if (n === 1) return "ملف واحد";
+  if (n === 2) return "ملفان";
+  if (n <= 10) return `${n} ملفات`;
+  return `${n} ملف`;
+}
+
+type DashDoc = {
+  id: string;
+  title: string;
+  file_name: string;
+  category: string;
+  product_name: string | null;
+  file_size: number | null;
+  status: string;
+  updated_at: string | null;
+};
+
+function Dashboard({
+  lang, setLang, username,
+}: { lang: Lang; setLang: (l: Lang) => void; username?: string }) {
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const { can } = useDeptPermissions();
-  const { role } = useAuth();
   const { departments } = useWorkspaceDepartments();
-  const tiles: Array<{
-    key: string;
-    title: string;
-    desc: string;
-    gradient: string;
-    emoji: string;
-    onClick?: () => void;
-    href?: string;
-    search?: Record<string, string>;
-    category?: string;
-  }> = [
-    ...departments.map((d) => ({
-      key: d.key,
-      title: lang === "ar" ? d.title_ar : d.title_en,
-      desc: lang === "ar" ? d.desc_ar : d.desc_en,
-      gradient: d.gradient,
-      emoji: d.emoji,
-      category: d.key,
-      ...(d.key === QUALITY_HUB_KEY ? { href: "/quality-hub" } : {}),
-    })),
-    {
-      key: "convert-media",
-      title: t("تحويل الملفات إلى صوت وفيديو", "Files to Audio & Video"),
-      desc: t("حوّل PDF وWord وExcel وPowerPoint والصور إلى صوت وفيديو محليًا", "Convert documents and images to audio & video locally"),
-      gradient: "from-teal-600 to-cyan-700",
-      emoji: "🎬",
-      href: "/convert",
-    },
-    ...(role === "owner"
-      ? [{
-          key: "manage-depts",
-          title: t("إدارة الأقسام", "Manage Departments"),
-          desc: t("إضافة أو تعديل أو تعطيل الأقسام وإنشاء مساحة عمل مستقلة لكل قسم", "Add, edit or disable departments — each gets its own workspace"),
-          gradient: "from-slate-600 to-slate-800",
-          emoji: "🧩",
-          href: "/settings",
-          search: { tab: "depts" },
-        }]
-      : []),
-  ];
+  const { signOut } = useAuth();
+  const [docs, setDocs] = useState<DashDoc[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<string | null>(null);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const closeMenus = () => { setBellOpen(false); setMenuOpen(false); };
 
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from("documents")
+        .select("id, title, file_name, category, product_name, file_size, status, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(500);
+      setDocs((data ?? []) as unknown as DashDoc[]);
+      setLoaded(true);
+    })();
+  }, []);
+
+  const visibleDepts = departments.filter((d) => can(d.key).view);
+  const deptTitle = (key: string) => {
+    const d = departments.find((x) => x.key === key);
+    return d ? (lang === "ar" ? d.title_ar : d.title_en) : key;
+  };
+
+  const query = q.trim().toLowerCase();
+  const results = query
+    ? docs
+        .filter((d) =>
+          `${d.title} ${d.file_name} ${d.file_type ?? ""} ${d.product_name ?? ""} ${deptTitle(d.category)}`
+            .toLowerCase()
+            .includes(query))
+        .slice(0, 8)
+    : [];
+
+  const scoped = filter ? docs.filter((d) => d.category === filter) : docs;
+  const recent = scoped.slice(0, 5);
+  const lastUpdate = docs.reduce<string | null>(
+    (acc, d) => (d.updated_at && (!acc || d.updated_at > acc) ? d.updated_at : acc),
+    null,
+  );
+
+  const cards = (filter ? visibleDepts.filter((d) => d.key === filter) : visibleDepts).map((d) => {
+    const cat = docs.filter((x) => x.category === d.key);
+    const processing = cat.some((x) => x.status === "processing" || x.status === "uploaded");
+    const failed = cat.some((x) => x.status === "failed");
+    const badge = processing ? t("جاري التحليل", "Analyzing")
+      : failed ? t("يحتاج مراجعة", "Needs review")
+      : cat.length > 0 ? t("جودة عالية", "High quality")
+      : t("جديد", "New");
+    const badgeCls = processing
+      ? "bg-amber-400/15 text-amber-300 border-amber-300/30"
+      : failed
+        ? "bg-rose-400/15 text-rose-300 border-rose-300/30"
+        : cat.length > 0
+          ? "bg-emerald-400/15 text-emerald-300 border-emerald-300/30"
+          : "bg-sky-400/15 text-sky-300 border-sky-300/30";
+    return { ...d, count: cat.length, badge, badgeCls };
+  });
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-3xl overflow-hidden shadow-2xl relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-sky-600 to-emerald-500 opacity-95" />
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 1px, transparent 1px), radial-gradient(circle at 80% 60%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-        <div className="relative p-8 text-white">
-          <div className="text-xs uppercase tracking-widest opacity-80">My Favourite Project</div>
-          <h2 className="text-2xl md:text-3xl font-extrabold mt-1">
-            {t(`أهلاً بك يا مهندس ${username || "طارق"} 👋`, `Welcome, Engineer ${username || "Tarek"} 👋`)}
-          </h2>
-          <p className="text-sm md:text-base opacity-90 mt-2 max-w-2xl">
-            {t(
-              "منصتك الشخصية للإنتاج والجودة — اختر أي قسم لبدء بحث متخصص. كل منتج تبحث عنه يُحفظ تلقائيًا في قاعدة بياناتك ويحمل أيقونة مميزة، مع مصادر صور جاهزة وإمكانية الطباعة.",
-              "Your personal hub for production & QC. Every product you search is auto-saved with a unique icon, image sources, and print support.",
+    <div dir={lang === "ar" ? "rtl" : "ltr"} className="dash-scope dash-dots -m-4 min-h-screen p-4 md:-m-6 md:p-6">
+      {(bellOpen || menuOpen || fabOpen) && (
+        <div className="fixed inset-0 z-40" onClick={() => { closeMenus(); setFabOpen(false); }} aria-hidden />
+      )}
+      <div className="relative mx-auto max-w-6xl space-y-6 pb-24">
+        {/* ---------- Header ---------- */}
+        <header className="relative overflow-hidden rounded-[20px] bg-gradient-to-l from-indigo-600 via-violet-600 to-blue-600 p-5 shadow-2xl">
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 15% 30%, white 1px, transparent 1px), radial-gradient(circle at 70% 70%, white 1px, transparent 1px)",
+              backgroundSize: "34px 34px",
+            }}
+          />
+          <div className="relative flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/20 text-2xl shadow-inner">✦</div>
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-extrabold text-white md:text-xl">{t("مشروعي المفضل", "My Favourite Project")}</h1>
+                <p className="truncate text-xs text-white/75">
+                  {t("أهلاً بك يا مهندس", "Welcome, Engineer")} {username || (lang === "ar" ? "طارق" : "Tarek")} 👋
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  onClick={() => { setBellOpen(!bellOpen); setMenuOpen(false); }}
+                  aria-label={t("التنبيهات", "Notifications")}
+                  className="grid size-10 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+                >
+                  <Bell className="size-5" />
+                </button>
+                {bellOpen && (
+                  <div className="absolute end-0 top-12 z-50 w-72 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-3 shadow-2xl">
+                    <p className="mb-2 text-xs font-bold text-[var(--dash-muted)]">{t("آخر التحديثات", "Latest updates")}</p>
+                    {docs.slice(0, 3).map((d) => (
+                      <Link
+                        key={d.id}
+                        to="/documents/$category"
+                        params={{ category: d.category }}
+                        onClick={() => setBellOpen(false)}
+                        className="block rounded-xl px-2 py-1.5 text-sm transition hover:bg-white/5"
+                      >
+                        <span className="block truncate">
+                          {dashFileMeta(d.file_name).label} · {d.title}
+                        </span>
+                        <span className="block text-xs text-[var(--dash-muted)]">
+                          {d.updated_at ? dashRelTime(d.updated_at) : ""}
+                        </span>
+                      </Link>
+                    ))}
+                    {docs.length === 0 && <p className="text-xs text-[var(--dash-muted)]">{t("لا تنبيهات بعد", "Nothing yet")}</p>}
+                  </div>
+                )}
+              </div>
+              <Link
+                to="/settings"
+                aria-label={t("الإعدادات", "Settings")}
+                className="grid size-10 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+              >
+                <SettingsIcon className="size-5" />
+              </Link>
+              <div className="relative">
+                <button
+                  onClick={() => { setMenuOpen(!menuOpen); setBellOpen(false); }}
+                  aria-label={t("حسابي", "My account")}
+                  className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-extrabold text-white shadow-lg"
+                >
+                  {(username || "ط").slice(0, 1).toUpperCase()}
+                </button>
+                {menuOpen && (
+                  <div className="absolute end-0 top-12 z-50 w-56 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-2 shadow-2xl">
+                    <div className="px-3 py-2">
+                      <div className="truncate text-sm font-bold">{username}</div>
+                      <div className="text-xs text-[var(--dash-muted)]">{t("مسجل الدخول", "Signed in")}</div>
+                    </div>
+                    <Link to="/settings" onClick={closeMenus} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+                      <SettingsIcon className="size-4" /> {t("الإعدادات", "Settings")}
+                    </Link>
+                    <button
+                      onClick={() => { closeMenus(); setLang(lang === "ar" ? "en" : "ar"); }}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5"
+                    >
+                      <Languages className="size-4" /> {lang === "ar" ? "English" : "عربي"}
+                    </button>
+                    <button
+                      onClick={() => { closeMenus(); void signOut(); }}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-300 transition hover:bg-rose-500/10"
+                    >
+                      <LogOut className="size-4" /> {t("خروج", "Logout")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* ---------- Local search (project files only) ---------- */}
+        <div className="relative z-10 mx-auto w-full max-w-2xl">
+          <div className="flex items-center gap-2 rounded-2xl border border-[var(--dash-border)] bg-[var(--dash-card)] px-4 py-3 backdrop-blur-xl focus-within:ring-2 focus-within:ring-violet-500/50">
+            <Search className="size-4 shrink-0 text-[var(--dash-muted)]" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("بحث داخل ملفاتي — بحث في مشروعك فقط", "Search my files — project only")}
+              className="w-full bg-transparent text-sm text-[var(--dash-text)] outline-none placeholder:text-[var(--dash-muted)]"
+            />
+            {q && (
+              <button onClick={() => setQ("")} aria-label={t("مسح", "Clear")} className="text-[var(--dash-muted)] hover:text-[var(--dash-text)]">
+                <X className="size-4" />
+              </button>
             )}
-          </p>
-          <div className="flex flex-wrap gap-2 mt-4 text-xs">
-            <span className="rounded-full bg-white/20 px-3 py-1">💾 حفظ تلقائي</span>
-            <span className="rounded-full bg-white/20 px-3 py-1">🖨️ طباعة كل قسم</span>
-            <span className="rounded-full bg-white/20 px-3 py-1">📸 مصادر صور</span>
-            <span className="rounded-full bg-white/20 px-3 py-1">🏷️ أيقونة لكل منتج</span>
+          </div>
+          {results.length > 0 && (
+            <div className="absolute inset-x-0 top-16 z-30 space-y-1 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-2 shadow-2xl">
+              {results.map((d) => {
+                const meta = dashFileMeta(d.file_name);
+                return (
+                  <Link
+                    key={d.id}
+                    to="/documents/$category"
+                    params={{ category: d.category }}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/5"
+                  >
+                    <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold ${meta.cls}`}>{meta.label}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">{d.title}</span>
+                      <span className="block truncate text-xs text-[var(--dash-muted)]">
+                        {deptTitle(d.category)} · {dashSize(d.file_size)}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+          {query && results.length === 0 && (
+            <p className="mt-2 text-center text-xs text-[var(--dash-muted)]">{t("لا توجد نتائج داخل ملفات مشروعك", "No matches in your project files")}</p>
+          )}
+        </div>
+
+        {/* ---------- Stats ---------- */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <DashStat icon={<Layers className="size-5" />} tone="text-sky-300 bg-sky-500/15"
+            value={String(visibleDepts.length)} label={t("عدد الأقسام", "Departments")} />
+          <DashStat icon={<Clock className="size-5" />} tone="text-amber-300 bg-amber-500/15"
+            value={lastUpdate ? dashRelTime(lastUpdate) : "—"} label={t("آخر تحديث", "Last update")} />
+          <DashStat icon={<FolderOpen className="size-5" />} tone="text-violet-300 bg-violet-500/15"
+            value={loaded ? visibleDepts.reduce((n, d) => n + docs.filter((x) => x.category === d.key).length, 0).toLocaleString("en-US") : "…"}
+            label={t("إجمالي الملفات", "Total files")} />
+        </div>
+
+        {/* ---------- Recent files ---------- */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-extrabold text-[var(--dash-text)]">{t("آخر الملفات", "Recent files")}</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {recent.map((d) => {
+              const meta = dashFileMeta(d.file_name);
+              return (
+                <Link
+                  key={d.id}
+                  to="/documents/$category"
+                  params={{ category: d.category }}
+                  className="flex min-w-[230px] items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-3 backdrop-blur-xl transition hover:border-violet-400/40 hover:bg-[var(--dash-card-strong)]"
+                >
+                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl border text-[11px] font-extrabold ${meta.cls}`}>{meta.label}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold">{d.title}</span>
+                    <span className="block truncate text-xs text-[var(--dash-muted)]">
+                      {deptTitle(d.category)} · {dashSize(d.file_size)}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
+            {loaded && recent.length === 0 && (
+              <p className="py-4 text-sm text-[var(--dash-muted)]">{t("لا ملفات بعد — ارفع أول ملف من قسم", "No files yet — upload from a department")}</p>
+            )}
+          </div>
+        </section>
+
+        {/* ---------- Filters ---------- */}
+        <div className="flex flex-wrap gap-2">
+          <DashFilter active={filter === null} onClick={() => setFilter(null)}>{t("الكل", "All")}</DashFilter>
+          {visibleDepts.map((d) => (
+            <DashFilter key={d.key} active={filter === d.key} onClick={() => setFilter(filter === d.key ? null : d.key)}>
+              {lang === "ar" ? d.title_ar : d.title_en}
+            </DashFilter>
+          ))}
+        </div>
+
+        {/* ---------- Department cards (glass) ---------- */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map((tile) => {
+            const inner = (
+              <motion.div
+                whileHover={{ y: -8, scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                className="group relative h-full rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-5 backdrop-blur-xl transition-shadow duration-300 hover:shadow-2xl"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="relative inline-flex size-12">
+                    <div
+                      aria-hidden
+                      className={`absolute -inset-1.5 rounded-2xl bg-gradient-to-br ${tile.gradient} opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-70`}
+                    />
+                    <div className={`relative grid size-12 place-items-center rounded-2xl bg-gradient-to-br ${tile.gradient} text-2xl shadow-md transition-transform duration-300 group-hover:rotate-[10deg] group-hover:scale-105`}>
+                      <span>{tile.emoji}</span>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${tile.badgeCls}`}>{tile.badge}</span>
+                </div>
+                <h3 className="mt-3 font-extrabold text-lg leading-tight">{lang === "ar" ? tile.title_ar : tile.title_en}</h3>
+                <p className="mt-1 text-xs text-[var(--dash-muted)] line-clamp-2">{lang === "ar" ? tile.desc_ar : tile.desc_en}</p>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-sm font-bold text-violet-300">{dashFilesLabel(tile.count, lang)}</span>
+                  <span className="text-sm font-semibold text-[var(--dash-muted)]">{t("فتح", "Open")} ←</span>
+                </div>
+              </motion.div>
+            );
+            if (tile.key === QUALITY_HUB_KEY) {
+              return <Link key={tile.key} to="/quality-hub" className="block h-full">{inner}</Link>;
+            }
+            return (
+              <Link key={tile.key} to="/dept/$category" params={{ category: tile.key }} className="block h-full">
+                {inner}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* ---------- Two small action pills ---------- */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex items-center gap-2 rounded-full border border-[var(--dash-border)] bg-[var(--dash-card)] px-3 py-2 backdrop-blur-xl">
+            <Film className="size-4 text-teal-300" />
+            <span className="text-sm font-semibold">{t("أداة تحويل الملفات", "File converter")}</span>
+            <Link to="/convert" className="rounded-full bg-teal-500/90 px-3 py-1 text-xs font-bold text-white transition hover:bg-teal-400">
+              {t("ابدأ التحويل", "Start")}
+            </Link>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-[var(--dash-border)] bg-[var(--dash-card)] px-3 py-2 backdrop-blur-xl">
+            <Sparkles className="size-4 text-violet-300" />
+            <span className="text-sm font-semibold">{t("اسأل مساعد المشروع", "Ask project assistant")} ✦</span>
+            <Link to="/chat" className="rounded-full bg-violet-500/90 px-3 py-1 text-xs font-bold text-white transition hover:bg-violet-400">
+              {t("ابدأ الآن", "Start")}
+            </Link>
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tiles.filter((tile) => !tile.category || can(tile.category).view).map((tile) => {
-          const inner = (
-            <motion.div
-              whileHover={{ y: -8, scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 260, damping: 20 }}
-              className={`group relative h-full rounded-2xl bg-gradient-to-br ${tile.gradient} p-[1.5px] shadow-lg transition-shadow duration-300 hover:shadow-2xl`}
-            >
-              <div className="relative h-full rounded-2xl bg-white/95 backdrop-blur p-5 flex flex-col gap-3">
-                <div className="relative inline-flex w-14 h-14">
-                  {/* Glow behind the icon in the card's own color — visible on hover */}
-                  <div
-                    aria-hidden
-                    className={`absolute -inset-1.5 rounded-2xl bg-gradient-to-br ${tile.gradient} opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-70`}
-                  />
-                  <div className={`relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${tile.gradient} text-white text-3xl shadow-md transition-transform duration-300 group-hover:rotate-[10deg] group-hover:scale-105`}>
-                    <span>{tile.emoji}</span>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-800 text-lg leading-tight">{tile.title}</h3>
-                  <p className="text-sm text-slate-600 mt-1">{tile.desc}</p>
-                </div>
-                <div className="mt-auto pt-2">
-                  <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${tile.gradient} bg-clip-text text-transparent`}>
-                    {tile.key === "manage-depts" ? t("فتح الإدارة", "Open manager") : t("فتح القسم", "Open department")}{" "}
-                    <span aria-hidden>→</span>
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          );
-          if (tile.href) {
-            return (
-              <Link key={tile.key} to={tile.href as "/ncr"} search={tile.search as never} className="h-full block">
-                {inner}
-              </Link>
-            );
-          }
-          if (tile.category) {
-            return (
-              <Link key={tile.key} to="/dept/$category" params={{ category: tile.category }} className="h-full block">
-                {inner}
-              </Link>
-            );
-          }
 
-          return (
-            <button key={tile.key} onClick={tile.onClick} className="text-start h-full">{inner}</button>
-          );
-        })}
-      </div>
+      {/* ---------- Floating + button ---------- */}
+      {fabOpen && (
+        <div className="fixed bottom-24 right-6 z-50 w-52 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-2 shadow-2xl">
+          <Link to="/" search={{ view: "editor" as const }} onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+            <FileText className="size-4" /> {t("تقرير جديد", "New report")}
+          </Link>
+          <Link to="/chat" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+            <MessageCircle className="size-4" /> {t("محادثة جديدة", "New chat")}
+          </Link>
+          <Link to="/convert" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+            <Film className="size-4" /> {t("تحويل ملفات", "Convert files")}
+          </Link>
+          <Link to="/settings" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+            <SettingsIcon className="size-4" /> {t("الإعدادات", "Settings")}
+          </Link>
+        </div>
+      )}
+      <button
+        onClick={() => setFabOpen(!fabOpen)}
+        aria-label={t("إضافة", "Add")}
+        className="fixed bottom-6 right-6 z-50 grid size-14 place-items-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-[0_10px_40px_-10px_rgba(139,92,246,0.9)] transition hover:scale-105"
+      >
+        <Plus className={`size-7 transition-transform duration-300 ${fabOpen ? "rotate-45" : ""}`} />
+      </button>
     </div>
+  );
+}
+
+function DashStat({ icon, tone, value, label }: { icon: React.ReactNode; tone: string; value: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-4 backdrop-blur-xl">
+      <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${tone}`}>{icon}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-extrabold">{value}</span>
+        <span className="block text-xs text-[var(--dash-muted)]">{label}</span>
+      </span>
+    </div>
+  );
+}
+
+function DashFilter({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+        active
+          ? "bg-gradient-to-l from-violet-600 to-fuchsia-600 text-white shadow-lg"
+          : "border border-[var(--dash-border)] bg-[var(--dash-card)] text-[var(--dash-muted)] hover:text-[var(--dash-text)]"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
