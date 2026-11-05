@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import {
   Languages, Plus, Save, Printer, FileDown, Trash2,
   LogOut, FileText, LogIn, UserPlus, FolderOpen, Sparkles, Settings as SettingsIcon,
+  Bell, Search, X, Layers, Clock, Film, MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -305,7 +306,8 @@ function AppScreen({
   return (
     <div className="p-4 md:p-6 print:p-0">
       <div className="mx-auto max-w-6xl">
-        {/* Header */}
+        {/* Header — hidden on the dashboard tab, which has its own dark header */}
+        {tab !== "hub" && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-indigo-600 via-sky-600 to-emerald-600 bg-clip-text text-transparent">
@@ -330,6 +332,7 @@ function AppScreen({
             </Button>
           </div>
         </div>
+        )}
 
         {/* Tabs — reports workspace only (reached from the General Quality hub) */}
         {tab !== "hub" && (
@@ -351,7 +354,7 @@ function AppScreen({
           </div>
         )}
 
-        {tab === "hub" && <HubView lang={lang} username={username} />}
+        {tab === "hub" && <Dashboard lang={lang} setLang={setLang} username={username} />}
         {tab === "editor" && (
           <EditorView
             t={t} lang={lang} dir={dir}
