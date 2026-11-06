@@ -595,6 +595,7 @@ type DashDoc = {
   id: string;
   title: string;
   file_name: string;
+  file_type: string | null;
   category: string;
   product_name: string | null;
   file_size: number | null;
