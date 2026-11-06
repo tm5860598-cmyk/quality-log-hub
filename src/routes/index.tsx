@@ -679,9 +679,9 @@ function Dashboard({
       )}
       <div className="relative mx-auto max-w-6xl space-y-6 pb-24">
         {/* ---------- Header ---------- */}
-        <header className="relative overflow-hidden rounded-[20px] bg-gradient-to-l from-indigo-600 via-violet-600 to-blue-600 p-5 shadow-2xl">
+        <header className="relative rounded-[20px] bg-gradient-to-l from-indigo-600 via-violet-600 to-blue-600 p-5 shadow-2xl">
           <div
-            className="absolute inset-0 opacity-20"
+            className="absolute inset-0 rounded-[20px] opacity-20"
             style={{
               backgroundImage:
                 "radial-gradient(circle at 15% 30%, white 1px, transparent 1px), radial-gradient(circle at 70% 70%, white 1px, transparent 1px)",
@@ -824,7 +824,7 @@ function Dashboard({
           <DashStat icon={<Clock className="size-5" />} tone="text-amber-300 bg-amber-500/15"
             value={lastUpdate ? dashRelTime(lastUpdate) : "—"} label={t("آخر تحديث", "Last update")} />
           <DashStat icon={<FolderOpen className="size-5" />} tone="text-violet-300 bg-violet-500/15"
-            value={loaded ? visibleDepts.reduce((n, d) => n + docs.filter((x) => x.category === d.key).length, 0).toLocaleString("en-US") : "…"}
+            value={loaded ? docs.length.toLocaleString("en-US") : "…"}
             label={t("إجمالي الملفات", "Total files")} />
         </div>
 
