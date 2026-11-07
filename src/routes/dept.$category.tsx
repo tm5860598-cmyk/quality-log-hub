@@ -4,11 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
 import { useDepartment } from "@/lib/departments";
-import { ArrowRight, Boxes, FileText, Clock } from "lucide-react";
+import { ArrowRight, Boxes, FileText, Clock, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/dept/$category")({
   ssr: false,
   component: DeptPage,
+  head: () => ({
+    meta: [
+      { title: "الأقسام | مشروعي المفضل" },
+      { name: "description", content: "مساحة العمل والمنتجات والمستندات الخاصة بأقسام مشروعي المفضل." },
+      { property: "og:title", content: "الأقسام | مشروعي المفضل" },
+      { property: "og:description", content: "مساحة العمل والمنتجات والمستندات الخاصة بأقسام مشروعي المفضل." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
 function DeptPage() {
@@ -59,59 +69,79 @@ function DeptPage() {
 
   const cards = [
     { to: "/products/$category" as const, params: { category }, emoji: "📦", title: "المنتجات والحاسبة", desc: "مكتبة المنتجات والوصفات وحاسبة الخامات حسب الكمية المطلوبة", icon: Boxes },
-    { to: "/manufacturing" as const, search: { category }, emoji: "🏭", title: "التصنيع والحاسبة", desc: "الوصفات وإصداراتها، حساب التشغيلة، الفاقد والتكلفة — لهذا القسم فقط", icon: Boxes },
-    { to: "/documents/$category" as const, params: { category }, emoji: "📄", title: "مستندات القسم", desc: "رفع ملفات PDF / Word وربطها بالقسم والمنتج كقاعدة معرفة", icon: FileText },
+    { to: "/documents/$category" as const, params: { category }, emoji: "📄", title: "مستندات القسم", desc: "ملفات القسم ومراجع المنتجات في مساحة واحدة", icon: FileText },
   ];
 
+  const accent = {
+    "juice-production": "border-orange-400/40 shadow-orange-500/10 hover:shadow-orange-500/20",
+    "juice-quality": "border-fuchsia-400/40 shadow-fuchsia-500/10 hover:shadow-fuchsia-500/20",
+    "dairy-production": "border-cyan-400/40 shadow-cyan-500/10 hover:shadow-cyan-500/20",
+    "dairy-quality": "border-teal-400/40 shadow-teal-500/10 hover:shadow-teal-500/20",
+    "bakery-production": "border-amber-400/40 shadow-amber-500/10 hover:shadow-amber-500/20",
+    "bakery-quality": "border-yellow-400/40 shadow-yellow-500/10 hover:shadow-yellow-500/20",
+    "quality-reports": "border-emerald-400/40 shadow-emerald-500/10 hover:shadow-emerald-500/20",
+    "quality-reference": "border-indigo-400/40 shadow-indigo-500/10 hover:shadow-indigo-500/20",
+  }[category] ?? "border-primary/30 shadow-primary/10 hover:shadow-primary/20";
+
   return (
-    <div dir="rtl" className="min-h-screen bg-background p-4 md:p-8">
+    <div dir="rtl" className="dash-scope dash-dots min-h-screen p-4 text-right md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            الرئيسية <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-slate-300 transition-colors hover:text-white">
+          <ArrowRight className="size-4" /> الرئيسية
+        </Link>
 
-        <div className={`rounded-3xl bg-gradient-to-br ${dept.gradient} p-6 text-white shadow-xl`}>
+        <section className={`relative overflow-hidden rounded-2xl border bg-white/[0.06] p-4 shadow-lg backdrop-blur-xl sm:p-5 ${accent}`}>
+          <div className={`absolute inset-y-0 right-0 w-1 bg-gradient-to-b ${dept.gradient}`} />
           <div className="flex items-center gap-4">
-            <div className="grid size-16 place-items-center rounded-2xl bg-white/20 text-4xl">{dept.emoji}</div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold">{dept.title_ar}</h1>
-              <p className="text-sm opacity-90 mt-1">{dept.desc_ar}</p>
+            <div className={`grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${dept.gradient} text-2xl shadow-lg sm:size-14`}>
+              {dept.emoji}
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl font-extrabold text-white sm:text-2xl">{dept.title_ar}</h1>
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-300">{dept.desc_ar}</p>
             </div>
           </div>
-          <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl bg-white/15 p-3">
-              <div className="text-2xl font-extrabold">{stats.products}</div>
-              <div className="text-xs opacity-90">منتج</div>
-            </div>
-            <div className="rounded-xl bg-white/15 p-3">
-              <div className="text-2xl font-extrabold">{stats.documents}</div>
-              <div className="text-xs opacity-90">مستند</div>
-            </div>
-            <div className="rounded-xl bg-white/15 p-3">
-              <div className="text-sm font-bold mt-1 flex items-center justify-center gap-1"><Clock className="size-3.5" />{stats.updated || "—"}</div>
-              <div className="text-xs opacity-90">آخر تحديث</div>
-            </div>
-          </div>
-        </div>
+        </section>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section aria-label="إحصائيات القسم" className="grid grid-cols-3 divide-x divide-x-reverse divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl">
+          <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
+            <div className="text-lg font-extrabold text-white sm:text-xl">{stats.products}</div>
+            <div className="mt-1 text-xs text-slate-400 sm:text-sm">عدد المنتجات</div>
+          </div>
+          <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
+            <div className="text-lg font-extrabold text-white sm:text-xl">{stats.documents}</div>
+            <div className="mt-1 text-xs text-slate-400 sm:text-sm">عدد المستندات</div>
+          </div>
+          <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
+            <div className="flex min-h-7 items-center justify-center gap-1.5 text-sm font-bold text-white sm:text-base">
+              <Clock className="size-3.5 shrink-0 text-slate-400" />
+              <span>{stats.updated || "—"}</span>
+            </div>
+            <div className="mt-1 text-xs text-slate-400 sm:text-sm">آخر تحديث</div>
+          </div>
+        </section>
+
+        <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
           {cards.map((c) => (
             <Link
               key={c.title}
               to={c.to}
               params={c.params as never}
               search={c.search as never}
-              className="group rounded-2xl border bg-card p-5 shadow-sm transition hover:shadow-lg hover:-translate-y-0.5"
+              className={`group relative flex min-h-52 flex-col overflow-hidden rounded-2xl border bg-white/[0.06] p-5 shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.09] ${accent}`}
             >
-              <div className={`inline-flex size-12 items-center justify-center rounded-xl bg-gradient-to-br ${dept.gradient} text-2xl text-white shadow`}>
-                {c.emoji}
+              <div className="flex items-start justify-between gap-3">
+                <div className={`grid size-12 place-items-center rounded-xl bg-gradient-to-br ${dept.gradient} text-2xl text-white shadow-lg transition-transform duration-300 group-hover:rotate-[10deg]`}>
+                  {c.emoji}
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                  <CheckCircle2 className="size-3.5" /> مفعل
+                </span>
               </div>
-              <h2 className="mt-3 font-extrabold text-lg">{c.title}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{c.desc}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-                فتح <ArrowRight className="size-4 rotate-180 transition group-hover:-translate-x-1" />
+              <h2 className="mt-4 text-lg font-extrabold text-white">{c.title}</h2>
+              <p className="mt-1 flex-1 text-sm leading-6 text-slate-300">{c.desc}</p>
+              <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg border border-white/15 bg-white/[0.07] px-3.5 py-2 text-sm font-bold text-white transition-colors group-hover:border-white/30 group-hover:bg-white/[0.12]">
+                فتح <ArrowRight className="size-4 transition-transform group-hover:-translate-x-1" />
               </span>
             </Link>
           ))}
