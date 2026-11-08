@@ -2,8 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useParams, useSearch } from
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
-import { Plus, MessageSquare, Trash2, ArrowLeft, Menu, X } from "lucide-react";
+import { Plus, Trash2, ArrowRight, Menu, X, Printer, Search } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useDepartments } from "@/lib/departments";
@@ -27,10 +26,22 @@ export const Route = createFileRoute("/chat")({
   notFoundComponent: () => <div className="p-6 text-center">Not found</div>,
 });
 
+/** WhatsApp-style list time: hour today, "أمس" yesterday, short date otherwise. */
+function listTime(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === yesterday.toDateString()) return "أمس";
+  return d.toLocaleDateString("ar-EG", { day: "numeric", month: "numeric", year: "2-digit" });
+}
+
 function ChatLayout() {
   const { session, status } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { threadId?: string };
   const search = useSearch({ from: "/chat" }) as { category?: string };
@@ -58,6 +69,13 @@ function ChatLayout() {
 
   useEffect(() => { loadThreads(); }, [loadThreads, activeId]);
 
+  // The conversation header (mobile) asks the layout to open the chat list.
+  useEffect(() => {
+    const openList = () => setOpen(true);
+    window.addEventListener("wa:open-list", openList);
+    return () => window.removeEventListener("wa:open-list", openList);
+  }, []);
+
   const newChat = async () => {
     const { data, error } = await supabase
       .from("chat_threads")
@@ -76,6 +94,12 @@ function ChatLayout() {
     if (activeId === id) navigate({ to: "/chat", search: { category } });
   };
 
+  /** Opens the conversation and prints it as a full report. */
+  const printThread = (id: string) => {
+    setOpen(false);
+    navigate({ to: "/chat/$threadId", params: { threadId: id }, search: { category, print: true } });
+  };
+
   if (status === "loading") {
     return <div className="min-h-screen grid place-items-center text-muted-foreground">...</div>;
   }
@@ -86,43 +110,63 @@ function ChatLayout() {
         <div className="text-center space-y-4 max-w-sm">
           <h2 className="text-xl font-semibold">سجّل الدخول لاستخدام الشات</h2>
           <Link to="/" className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90">
-            <ArrowLeft className="size-4" /> الرجوع لتسجيل الدخول
+            <ArrowRight className="size-4" /> الرجوع لتسجيل الدخول
           </Link>
         </div>
       </div>
     );
   }
 
+  const filtered = threads.filter((t) => (t.title || "محادثة").toLowerCase().includes(query.trim().toLowerCase()));
+
   const Sidebar = (
-    <aside className="w-72 shrink-0 border-l bg-card flex flex-col h-full">
-      <div className="p-3 border-b">
-        <div className="flex items-center gap-2 mb-2">
-          <Link to="/" className="inline-flex items-center justify-center rounded-md border w-9 h-9 hover:bg-accent" aria-label="Home">
-            <ArrowLeft className="size-4" />
-          </Link>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs text-muted-foreground">قسم</div>
-            <div className="font-semibold truncate">{cat.emoji} {cat.label}</div>
-          </div>
-          <button onClick={() => setOpen(false)} className="md:hidden inline-flex items-center justify-center rounded-md border w-9 h-9">
-            <X className="size-4" />
-          </button>
+    <aside className="wa-list">
+      <div className="wa-list-head">
+        <Link to="/" className="wa-icon-btn" aria-label="الرئيسية">
+          <ArrowRight className="size-5" />
+        </Link>
+        <div className="wa-avatar">{cat.emoji}</div>
+        <div className="min-w-0 flex-1">
+          <div className="wa-title">{cat.label}</div>
+          <div className="wa-sub">{threads.length} محادثة</div>
         </div>
-        <Button onClick={newChat} className="w-full gap-2"><Plus className="size-4" /> محادثة جديدة</Button>
+        <button type="button" onClick={newChat} className="wa-icon-btn" title="محادثة جديدة" aria-label="محادثة جديدة">
+          <Plus className="size-5" />
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="wa-icon-btn md:hidden" aria-label="إغلاق">
+          <X className="size-5" />
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {threads.length === 0 && (
-          <p className="text-center text-xs text-muted-foreground p-4">لا توجد محادثات في هذا القسم</p>
+      <div className="wa-search">
+        <Search className="size-4 shrink-0" />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث في المحادثات" aria-label="ابحث في المحادثات" />
+      </div>
+      <div className="wa-list-body">
+        {filtered.length === 0 && (
+          <p className="text-center text-xs p-6" style={{ color: "var(--wa-muted)" }}>
+            {threads.length === 0 ? "لا توجد محادثات في هذا القسم" : "لا نتائج مطابقة"}
+          </p>
         )}
-        {threads.map((t) => (
-          <div key={t.id} className={`group flex items-center gap-1 rounded-md px-2 py-2 hover:bg-accent ${activeId === t.id ? "bg-accent" : ""}`}>
-            <Link to="/chat/$threadId" params={{ threadId: t.id }} search={{ category }} onClick={() => setOpen(false)} className="flex-1 flex items-center gap-2 min-w-0 text-sm">
-              <MessageSquare className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{t.title || "محادثة"}</span>
+        {filtered.map((t) => (
+          <div key={t.id} className={`wa-row ${activeId === t.id ? "active" : ""}`}>
+            <Link to="/chat/$threadId" params={{ threadId: t.id }} search={{ category }} onClick={() => setOpen(false)} className="wa-row-main">
+              <div className="wa-avatar">{cat.emoji}</div>
+              <div className="min-w-0 flex-1">
+                <div className="wa-row-top">
+                  <span className="wa-row-title">{t.title || "محادثة"}</span>
+                  <span className="wa-row-time">{listTime(t.updated_at)}</span>
+                </div>
+                <div className="wa-row-sub">{cat.label}</div>
+              </div>
             </Link>
-            <button onClick={() => deleteThread(t.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-destructive" aria-label="delete">
-              <Trash2 className="size-3.5" />
-            </button>
+            <div className="wa-row-actions">
+              <button type="button" onClick={() => printThread(t.id)} className="wa-icon-btn" title="طباعة المحادثة" aria-label="طباعة المحادثة">
+                <Printer className="size-4" />
+              </button>
+              <button type="button" onClick={() => deleteThread(t.id)} className="wa-icon-btn wa-danger" title="حذف المحادثة" aria-label="حذف المحادثة">
+                <Trash2 className="size-4" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -130,21 +174,24 @@ function ChatLayout() {
   );
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-background to-accent/5" dir="rtl">
-      <div className="hidden md:flex">{Sidebar}</div>
+    <div className="wa-scope wa-app flex h-dvh" dir="rtl">
+      <div className="hidden md:block w-[22rem] shrink-0">{Sidebar}</div>
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 right-0 w-72">{Sidebar}</div>
+          <div className="absolute inset-y-0 right-0 w-[22rem] max-w-[90vw]">{Sidebar}</div>
         </div>
       )}
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="md:hidden flex items-center gap-2 p-3 border-b bg-card">
-          <button onClick={() => setOpen(true)} className="inline-flex items-center justify-center rounded-md border w-9 h-9">
-            <Menu className="size-4" />
-          </button>
-          <h1 className="font-semibold">{cat.emoji} {cat.label}</h1>
-        </header>
+      <main className="wa-main">
+        {!activeId && (
+          <header className="wa-header md:hidden">
+            <button type="button" onClick={() => setOpen(true)} className="wa-icon-btn" aria-label="المحادثات">
+              <Menu className="size-5" />
+            </button>
+            <div className="wa-avatar">{cat.emoji}</div>
+            <div className="wa-title">{cat.label}</div>
+          </header>
+        )}
         <Outlet />
       </main>
     </div>
