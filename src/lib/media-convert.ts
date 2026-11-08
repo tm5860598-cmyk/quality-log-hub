@@ -370,20 +370,33 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxH
   return { fs: minFs, lines: all.slice(0, Math.max(1, Math.floor(maxH / (minFs * 1.55)))) };
 }
 
-export function pickVideoMime(): { mime: string; ext: string } {
-  const opts = [
-    { mime: "video/mp4;codecs=avc1,mp4a.40.2", ext: "mp4" },
-    { mime: "video/mp4", ext: "mp4" },
-    { mime: "video/webm;codecs=vp9,opus", ext: "webm" },
-    { mime: "video/webm", ext: "webm" },
-  ];
-  return opts.find((o) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(o.mime)) ?? { mime: "", ext: "webm" };
+const VIDEO_MIMES = [
+  { mime: "video/webm;codecs=vp8,opus", ext: "webm" },
+  { mime: "video/webm;codecs=vp9,opus", ext: "webm" },
+  { mime: "video/webm", ext: "webm" },
+  { mime: "video/mp4;codecs=avc1,mp4a.40.2", ext: "mp4" },
+  { mime: "video/mp4", ext: "mp4" },
+];
+export function pickVideoMime(skip = 0): { mime: string; ext: string } {
+  const ok = VIDEO_MIMES.filter((o) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(o.mime));
+  return ok[skip] ?? (skip === ok.length ? { mime: "", ext: "webm" } : null as never);
 }
 
 const LEAD = 2.5; // seconds of title slide before the narration starts
 
+/** Tries each supported container/codec in turn (the first one a browser lists can still fail while recording). */
 export async function renderVideo(sp: SpeechResult, o: VideoOptions, signal: AbortSignal, onP: Progress) {
   if (typeof MediaRecorder === "undefined") throw new Error("المتصفح لا يدعم تسجيل الفيديو");
+  const count = VIDEO_MIMES.filter((v) => MediaRecorder.isTypeSupported(v.mime)).length;
+  let last: unknown;
+  for (let attempt = 0; attempt < (count + 1) * 2; attempt++) { // each format: with, then without bitrate hints
+    try { return await renderVideoOnce(sp, o, signal, onP, attempt); }
+    catch (e) { if (signal.aborted || (e as any)?.name === "AbortError") throw e; last = e; await tick(); }
+  }
+  throw last instanceof Error ? last : new Error("فشل تسجيل الفيديو");
+}
+
+async function renderVideoOnce(sp: SpeechResult, o: VideoOptions, signal: AbortSignal, onP: Progress, attempt: number) {
   const th = THEMES[o.theme] ?? THEMES.ocean;
   // Lower resolution/fps keeps memory low on phones (prevents the browser from reloading the tab).
   const base = o.quality === "hd" ? 720 : 540;
@@ -393,7 +406,7 @@ export async function renderVideo(sp: SpeechResult, o: VideoOptions, signal: Abo
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const g = canvas.getContext("2d")!;
-  const ac = new AudioContext({ sampleRate: sp.rate });
+  const ac = new AudioContext(); // device rate (44.1/48 kHz): encoders reject odd rates like 22.05 kHz
   await Promise.race([ac.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
   const dest = ac.createMediaStreamDestination();
   const audioBuf = ac.createBuffer(1, sp.pcm.length, sp.rate);
@@ -403,8 +416,10 @@ export async function renderVideo(sp: SpeechResult, o: VideoOptions, signal: Abo
   srcNode.buffer = audioBuf;
   srcNode.connect(dest);
   const stream = new MediaStream([...canvas.captureStream(FPS).getVideoTracks(), ...dest.stream.getAudioTracks()]);
-  const { mime, ext } = pickVideoMime();
-  const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: o.quality === "hd" ? 2_500_000 : 1_200_000, audioBitsPerSecond: 96_000 } : undefined);
+  const { mime, ext } = pickVideoMime(attempt >> 1);
+  let rec: MediaRecorder;
+  try { rec = new MediaRecorder(stream, mime ? (attempt % 2 === 0 ? { mimeType: mime, videoBitsPerSecond: o.quality === "hd" ? 2_500_000 : 1_200_000 } : { mimeType: mime }) : undefined); }
+  catch (e) { stream.getTracks().forEach((t) => t.stop()); ac.close().catch(() => {}); throw e; }
   const chunks: Blob[] = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const duration = sp.duration;
@@ -485,7 +500,7 @@ export async function renderVideo(sp: SpeechResult, o: VideoOptions, signal: Abo
     const onAbort = () => { try { srcNode.stop(); } catch {} ; rec.onstop = null; if (rec.state !== "inactive") rec.stop(); finish(); reject(new DOMException("تم إلغاء العملية", "AbortError")); };
     signal.addEventListener("abort", onAbort, { once: true });
     rec.onstop = () => { finish(); signal.removeEventListener("abort", onAbort); resolve({ blob: new Blob(chunks, { type: mime.split(";")[0] || "video/webm" }), ext }); };
-    rec.onerror = () => { finish(); reject(new Error("فشل تسجيل الفيديو")); };
+    rec.onerror = (ev: any) => { finish(); signal.removeEventListener("abort", onAbort); reject(new Error(`فشل تسجيل الفيديو${ev?.error?.message ? ` (${ev.error.message})` : ""}`)); };
     let wake: any = null;
     (navigator as any).wakeLock?.request?.("screen").then((w: any) => (wake = w)).catch(() => {});
     const stopRec = () => { try { wake?.release?.(); } catch {} ; if (rec.state !== "inactive") { try { rec.requestData(); } catch {} ; rec.stop(); } };
