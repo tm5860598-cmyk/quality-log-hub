@@ -389,7 +389,7 @@ export async function renderVideo(sp: SpeechResult, o: VideoOptions, signal: Abo
   if (typeof MediaRecorder === "undefined") throw new Error("المتصفح لا يدعم تسجيل الفيديو");
   const count = VIDEO_MIMES.filter((v) => MediaRecorder.isTypeSupported(v.mime)).length;
   let last: unknown;
-  for (let attempt = 0; attempt <= count; attempt++) {
+  for (let attempt = 0; attempt < (count + 1) * 2; attempt++) { // each format: with, then without bitrate hints
     try { return await renderVideoOnce(sp, o, signal, onP, attempt); }
     catch (e) { if (signal.aborted || (e as any)?.name === "AbortError") throw e; last = e; await tick(); }
   }
@@ -416,9 +416,9 @@ async function renderVideoOnce(sp: SpeechResult, o: VideoOptions, signal: AbortS
   srcNode.buffer = audioBuf;
   srcNode.connect(dest);
   const stream = new MediaStream([...canvas.captureStream(FPS).getVideoTracks(), ...dest.stream.getAudioTracks()]);
-  const { mime, ext } = pickVideoMime(attempt);
+  const { mime, ext } = pickVideoMime(attempt >> 1);
   let rec: MediaRecorder;
-  try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: o.quality === "hd" ? 2_500_000 : 1_200_000 } : undefined); }
+  try { rec = new MediaRecorder(stream, mime ? (attempt % 2 === 0 ? { mimeType: mime, videoBitsPerSecond: o.quality === "hd" ? 2_500_000 : 1_200_000 } : { mimeType: mime }) : undefined); }
   catch (e) { stream.getTracks().forEach((t) => t.stop()); ac.close().catch(() => {}); throw e; }
   const chunks: Blob[] = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);

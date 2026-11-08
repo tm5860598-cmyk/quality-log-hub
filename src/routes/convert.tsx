@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import type { EnVoice, SpeechResult, ThemeKey, Voice, VideoQuality } from "@/lib/media-convert";
 import { ACCEPT, KIND_LABEL, buildSrt, detectKind, estimateSeconds, formatBytes, formatDuration, hasArabic, type FileKind } from "@/lib/convert-text";
+import { supabase } from "@/integrations/supabase/client";
+import type { AnalyzeMode } from "@/lib/convert-analyze";
 import { Card, Field, KindBadge, Segmented, StepPill, Switch } from "@/components/convert/parts";
 
 export const Route = createFileRoute("/convert")({
@@ -27,9 +29,9 @@ export const Route = createFileRoute("/convert")({
 type Stage = "idle" | "extract" | "audio" | "video";
 type Item = { id: string; name: string; size: number; kind: FileKind | "paste"; status: "reading" | "done" | "error"; error?: string; file?: File; count?: number };
 type Sec = { id: string; itemId: string; fileName: string; title: string; text: string; enabled: boolean };
-type Settings = { voice: Voice; enVoice: EnVoice; speed: number; pause: number; ratio: "16:9" | "9:16"; theme: ThemeKey; quality: VideoQuality; forceOcr: boolean; includeNotes: boolean };
+type Settings = { analyze: AnalyzeMode; voice: Voice; enVoice: EnVoice; speed: number; pause: number; ratio: "16:9" | "9:16"; theme: ThemeKey; quality: VideoQuality; forceOcr: boolean; includeNotes: boolean };
 
-const DEFAULTS: Settings = { voice: "auto", enVoice: "hfc_female", speed: 1, pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false };
+const DEFAULTS: Settings = { analyze: "explain", voice: "auto", enVoice: "hfc_female", speed: 1, pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false };
 const STORE = "convert-settings-v1";
 const MAX_CHARS = 200_000;
 
@@ -67,6 +69,8 @@ function ConvertPage() {
   const [label, setLabel] = useState("");
   const [error, setError] = useState("");
   const [audio, setAudio] = useState<{ url: string; sp: SpeechResult; key: string } | null>(null);
+  const [script, setScript] = useState<{ key: string; sections: { label: string; text: string }[] } | null>(null);
+  const [notice, setNotice] = useState("");
   const [video, setVideo] = useState<{ url: string; ext: string; size: number; key: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const urls = useRef<string[]>([]);
@@ -90,7 +94,7 @@ function ConvertPage() {
   const multi = items.filter((i) => i.status === "done").length > 1;
   const sectionInputs = () => enabled.map((s) => ({ label: multi ? `${s.fileName.slice(0, 18)} • ${s.title}` : s.title, text: s.text }));
   const textKey = hash(enabled.map((s) => s.text).join("\u0001"));
-  const audioKey = `${textKey}|${settings.voice}|${settings.enVoice}|${settings.speed}|${settings.pause}|${multi}`;
+  const audioKey = `${textKey}|${settings.analyze}|${settings.voice}|${settings.enVoice}|${settings.speed}|${settings.pause}|${multi}`;
   const title = videoTitle.trim() || baseOf(items.find((i) => i.status === "done")?.name ?? "تحويل الملفات");
   const videoKey = `${audioKey}|${settings.ratio}|${settings.theme}|${settings.quality}|${title}`;
   const audioStale = !!audio && audio.key !== audioKey;
@@ -176,9 +180,31 @@ function ConvertPage() {
   async function makeAudio(): Promise<SpeechResult | null> {
     if (!hasText) return null;
     const m = await import("@/lib/media-convert");
-    const segs = m.splitSegments(sectionInputs());
     const key = audioKey;
-    const sp = await run("audio", (sig) => m.synthesize(segs, settings.voice, sig, onP, { pause: settings.pause, speed: settings.speed, enVoice: settings.enVoice }));
+    const sp = await run("audio", async (sig) => {
+      setNotice("");
+      let input = sectionInputs();
+      if (settings.analyze !== "off") {
+        const akey = `${textKey}|${settings.analyze}|${multi}`;
+        if (script?.key === akey) input = script.sections;
+        else {
+          try {
+            const { data } = await supabase.auth.getSession();
+            const token = data.session?.access_token;
+            if (!token) throw new Error("سجّل الدخول لاستخدام تحليل النص");
+            const { analyzeText } = await import("@/lib/convert-analyze");
+            const r = await analyzeText(input, settings.analyze, token, sig, onP);
+            input = r.sections;
+            setScript({ key: akey, sections: r.sections });
+            if (r.skippedChars) setNotice(`حُلّل الجزء الأول من الملف فقط للحفاظ على الرصيد، وقُرئ الباقي (${r.skippedChars.toLocaleString("ar-EG")} حرف) كما هو.`);
+          } catch (e: any) {
+            if (e?.name === "AbortError") throw e;
+            setNotice(`${e?.message || "تعذّر تحليل النص"} — تمت القراءة كما هو بدون تحليل.`);
+          }
+        }
+      }
+      return m.synthesize(m.splitSegments(input), settings.voice, sig, onP, { pause: settings.pause, speed: settings.speed, enVoice: settings.enVoice });
+    });
     if (sp) { drop(audio?.url); setAudio({ url: track(sp.wav), sp, key }); }
     return sp;
   }
@@ -252,6 +278,13 @@ function ConvertPage() {
           <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" /><span className="flex-1">{error}</span>
             <button onClick={() => setError("")} aria-label="إغلاق" className="shrink-0"><X className="size-4" /></button>
+          </div>
+        )}
+
+        {notice && (
+          <div role="status" className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" /><span className="flex-1">{notice}</span>
+            <button onClick={() => setNotice("")} aria-label="إغلاق" className="shrink-0"><X className="size-4" /></button>
           </div>
         )}
 
@@ -388,6 +421,10 @@ function ConvertPage() {
         {hasText && (
           <Card title="٣. الإعدادات" subtitle="تُحفظ اختياراتك تلقائيًا على هذا الجهاز">
             <div className="grid gap-5 lg:grid-cols-2">
+              <Field label="تحليل النص قبل التحويل" hint={settings.analyze === "off" ? "يُقرأ النص كما هو بدون أي تعديل." : "يفهم الذكاء الاصطناعي المحتوى ثم يعيد كتابته للاستماع (يحذف الترويسات ويقرأ الجداول كجمل). طلب واحد لكل ~١٨ ألف حرف، بحد أقصى ٣ طلبات."}>
+                <Segmented label="تحليل النص" value={settings.analyze} onChange={(v) => set("analyze", v)} disabled={busy}
+                  options={[{ value: "explain", label: "فهم وإعادة صياغة" }, { value: "summary", label: "ملخص" }, { value: "off", label: "كما هو" }]} />
+              </Field>
               <Field label="لغة الصوت" hint={settings.voice === "auto" ? "يختار الصوت المناسب لكل فقرة حسب لغتها — مناسب للملفات المختلطة." : "الصوت العربي موحّد للفصحى واللهجة المصرية."}>
                 <Segmented label="لغة الصوت" value={settings.voice} onChange={(v) => set("voice", v)} disabled={busy}
                   options={[{ value: "auto", label: "تلقائي" }, { value: "ar", label: "عربي" }, { value: "en", label: "English" }]} />
@@ -445,6 +482,12 @@ function ConvertPage() {
                   {audioStale && <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">النص أو الإعدادات تغيّرت — أعد التوليد</span>}
                 </div>
                 <audio controls src={audio.url} className="w-full" />
+                {settings.analyze !== "off" && script && (
+                  <details className="rounded-lg border bg-muted/30 p-3 text-sm">
+                    <summary className="cursor-pointer font-semibold">النص بعد التحليل (ما تم نطقه)</summary>
+                    <div dir="auto" className="mt-2 max-h-72 space-y-2 overflow-auto whitespace-pre-wrap leading-7">{script.sections.map((x) => x.text).join("\n\n")}</div>
+                  </details>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => save(audio.sp.wav, `${title}.wav`)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><Download className="size-4" /> تحميل الصوت (WAV)</button>
                   <button onClick={exportSrt} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted/50"><Subtitles className="size-4" /> الترجمة (SRT)</button>
