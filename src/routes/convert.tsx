@@ -4,7 +4,7 @@ import {
   AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ClipboardPaste, Clock, Download, Film, Loader2, RefreshCw,
   ShieldCheck, Sparkles, Subtitles, Trash2, Upload, Volume2, X,
 } from "lucide-react";
-import type { SpeechResult, ThemeKey, Voice, VideoQuality } from "@/lib/media-convert";
+import type { EnVoice, SpeechResult, ThemeKey, Voice, VideoQuality } from "@/lib/media-convert";
 import { ACCEPT, KIND_LABEL, buildSrt, detectKind, estimateSeconds, formatBytes, formatDuration, hasArabic, type FileKind } from "@/lib/convert-text";
 import { Card, Field, KindBadge, Segmented, StepPill, Switch } from "@/components/convert/parts";
 
@@ -27,9 +27,9 @@ export const Route = createFileRoute("/convert")({
 type Stage = "idle" | "extract" | "audio" | "video";
 type Item = { id: string; name: string; size: number; kind: FileKind | "paste"; status: "reading" | "done" | "error"; error?: string; file?: File; count?: number };
 type Sec = { id: string; itemId: string; fileName: string; title: string; text: string; enabled: boolean };
-type Settings = { voice: Voice; pause: number; ratio: "16:9" | "9:16"; theme: ThemeKey; quality: VideoQuality; forceOcr: boolean; includeNotes: boolean };
+type Settings = { voice: Voice; enVoice: EnVoice; speed: number; pause: number; ratio: "16:9" | "9:16"; theme: ThemeKey; quality: VideoQuality; forceOcr: boolean; includeNotes: boolean };
 
-const DEFAULTS: Settings = { voice: "auto", pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false };
+const DEFAULTS: Settings = { voice: "auto", enVoice: "hfc_female", speed: 1, pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false };
 const STORE = "convert-settings-v1";
 const MAX_CHARS = 200_000;
 
@@ -90,7 +90,7 @@ function ConvertPage() {
   const multi = items.filter((i) => i.status === "done").length > 1;
   const sectionInputs = () => enabled.map((s) => ({ label: multi ? `${s.fileName.slice(0, 18)} • ${s.title}` : s.title, text: s.text }));
   const textKey = hash(enabled.map((s) => s.text).join("\u0001"));
-  const audioKey = `${textKey}|${settings.voice}|${settings.pause}|${multi}`;
+  const audioKey = `${textKey}|${settings.voice}|${settings.enVoice}|${settings.speed}|${settings.pause}|${multi}`;
   const title = videoTitle.trim() || baseOf(items.find((i) => i.status === "done")?.name ?? "تحويل الملفات");
   const videoKey = `${audioKey}|${settings.ratio}|${settings.theme}|${settings.quality}|${title}`;
   const audioStale = !!audio && audio.key !== audioKey;
@@ -178,7 +178,7 @@ function ConvertPage() {
     const m = await import("@/lib/media-convert");
     const segs = m.splitSegments(sectionInputs());
     const key = audioKey;
-    const sp = await run("audio", (sig) => m.synthesize(segs, settings.voice, sig, onP, { pause: settings.pause }));
+    const sp = await run("audio", (sig) => m.synthesize(segs, settings.voice, sig, onP, { pause: settings.pause, speed: settings.speed, enVoice: settings.enVoice }));
     if (sp) { drop(audio?.url); setAudio({ url: track(sp.wav), sp, key }); }
     return sp;
   }
@@ -392,6 +392,16 @@ function ConvertPage() {
                 <Segmented label="لغة الصوت" value={settings.voice} onChange={(v) => set("voice", v)} disabled={busy}
                   options={[{ value: "auto", label: "تلقائي" }, { value: "ar", label: "عربي" }, { value: "en", label: "English" }]} />
               </Field>
+              <Field label="سرعة الكلام" hint="تغيير السرعة لا يغيّر طبقة الصوت. الأبطأ أوضح للشرح.">
+                <Segmented label="سرعة الكلام" value={String(settings.speed)} onChange={(v) => set("speed", Number(v))} disabled={busy}
+                  options={[{ value: "0.85", label: "بطيئة" }, { value: "1", label: "عادية" }, { value: "1.15", label: "سريعة" }]} />
+              </Field>
+              {settings.voice !== "ar" && (
+                <Field label="الصوت الإنجليزي" hint="الصوت عالي الجودة أوضح لكنه أكبر في التحميل (مرة واحدة).">
+                  <Segmented label="الصوت الإنجليزي" value={settings.enVoice} onChange={(v) => set("enVoice", v)} disabled={busy}
+                    options={[{ value: "hfc_female", label: "أنثى" }, { value: "hfc_male", label: "ذكر" }, { value: "lessac", label: "عالي الجودة" }]} />
+                </Field>
+              )}
               <Field label="الوقفة بين الجمل" hint="وقفة أطول تجعل الاستماع أهدأ وأوضح.">
                 <Segmented label="الوقفة بين الجمل" value={String(settings.pause)} onChange={(v) => set("pause", Number(v))} disabled={busy}
                   options={[{ value: "0.15", label: "قصيرة" }, { value: "0.4", label: "متوسطة" }, { value: "0.8", label: "طويلة" }]} />

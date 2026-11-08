@@ -2,16 +2,17 @@
 // No AI API / credits: pdf.js, fflate, tesseract.js (OCR wasm), Piper TTS (wasm), Canvas + MediaRecorder.
 // Pure text helpers live in ./convert-text (unit-testable, no DOM).
 
+import { normalizePeak, normalizeForSpeech, polishClip, splitSegments, timeStretch, type Segment, type SectionInput } from "./convert-speech";
 import {
   clean, decodeText, detectKind, dominantScript, hasArabic, htmlToText, looksGarbled, markdownToText, parseCsv, parseDocx,
-  parseOpenDocument, parsePptx, parseXlsx, speakable, subtitleToText, tabularToSpeech,
+  parseOpenDocument, parsePptx, parseXlsx, subtitleToText, tabularToSpeech,
   type RawSection, type ZipLike,
 } from "./convert-text";
 
 export type Progress = (pct: number, label: string) => void;
 /** A speakable chunk. `label` is the human location ("صفحة 3", "شريحة 2", "ورقة: المنتجات"). */
-export type Segment = { text: string; label: string; section: number };
-export type SectionInput = { label: string; text: string };
+export type { Segment, SectionInput };
+export { splitSegments };
 export type ExtractOptions = { forceOcr?: boolean; includeNotes?: boolean };
 
 const MAX_FILE = 50 * 1024 * 1024;
@@ -149,37 +150,13 @@ export async function extractFile(file: File, signal: AbortSignal, onP: Progress
   return sections;
 }
 
-/* ---------------------------------------------------------- segmentation --- */
-
-/** Split into speakable chunks (small chunks keep the local TTS engine within memory limits). */
-export function splitSegments(sections: SectionInput[], maxLen = 200): Segment[] {
-  const out: Segment[] = [];
-  sections.forEach((s, si) => {
-    const sentences = s.text.split(/(?<=[.!?؟،؛:…\n])\s+/);
-    let buf = "";
-    const push = (t: string) => { const v = t.trim(); if (v) out.push({ text: v, label: s.label, section: si }); };
-    const flush = () => { push(buf); buf = ""; };
-    for (const sen of sentences) {
-      if (buf && (buf + " " + sen).length > maxLen) flush();
-      buf = buf ? buf + " " + sen : sen;
-      // A single run without punctuation longer than ~1.5 chunks: cut at a space boundary.
-      while (buf.length > maxLen * 1.5) {
-        let cut = buf.lastIndexOf(" ", maxLen);
-        if (cut < maxLen * 0.5) cut = maxLen;
-        push(buf.slice(0, cut));
-        buf = buf.slice(cut).trim();
-      }
-    }
-    flush();
-  });
-  return out;
-}
-
 /* ---------------------------------------------------------------- speech --- */
 
 export type Voice = "auto" | "ar" | "en";
 type Lang = "ar" | "en";
-const VOICE_ID: Record<Lang, string> = { ar: "ar_JO-kareem-medium", en: "en_US-hfc_female-medium" };
+export type EnVoice = "hfc_female" | "lessac" | "hfc_male";
+const EN_VOICES: Record<EnVoice, string> = { hfc_female: "en_US-hfc_female-medium", lessac: "en_US-lessac-high", hfc_male: "en_US-hfc_male-medium" };
+const AR_VOICE = "ar_JO-kareem-medium";
 
 function encodeWav(pcm: Int16Array, rate: number): Blob {
   const header = new ArrayBuffer(44);
@@ -220,9 +197,10 @@ function resample(pcm: Int16Array, from: number, to: number): Int16Array {
   return out;
 }
 
-export type Timing = { seg: Segment; start: number; end: number };
+export type Timing = { seg: { text: string; label: string; section: number }; start: number; end: number; group: number };
 export type SpeechResult = { wav: Blob; pcm: Int16Array; rate: number; duration: number; timings: Timing[] };
-export type SpeechOptions = { pause?: number };
+/** pause: scale of natural pauses (0.4 = default). speed: 0.7–1.3, pitch preserved. */
+export type SpeechOptions = { pause?: number; speed?: number; enVoice?: EnVoice };
 
 export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSignal, onP: Progress, opts: SpeechOptions = {}): Promise<SpeechResult> {
   // The local engine (Piper + onnxruntime) sizes its thread pool from
@@ -265,18 +243,28 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
       return { pcm, rate: b.sampleRate };
     };
 
+    const speed = Math.min(1.5, Math.max(0.6, opts.speed ?? 1));
     for (const lang of ["ar", "en"] as const) {
       const idxs = langs.map((l, i) => (l === lang ? i : -1)).filter((i) => i >= 0);
       if (!idxs.length) continue;
       onP((done / segs.length) * 100, lang === "ar" ? "تحميل صوت اللغة العربية (مرة واحدة فقط)…" : "تحميل صوت اللغة الإنجليزية (مرة واحدة فقط)…");
-      if (tts.TtsSession._instance && tts.TtsSession._instance.voiceId !== VOICE_ID[lang]) tts.TtsSession._instance = null;
-      const session =
-        tts.TtsSession._instance ??
-        (await tts.TtsSession.create({
-          voiceId: VOICE_ID[lang] as any,
+      const wanted = lang === "ar" ? AR_VOICE : EN_VOICES[opts.enVoice ?? "hfc_female"];
+      const open = (voiceId: string) =>
+        tts.TtsSession.create({
+          voiceId: voiceId as any,
           progress: (p: any) => p?.total && onP((p.loaded / p.total) * 100, "تحميل نموذج الصوت…"),
           wasmPaths: { ...tts.TtsSession.WASM_LOCATIONS, onnxWasm: ORT },
-        }));
+        });
+      if (tts.TtsSession._instance && tts.TtsSession._instance.voiceId !== wanted) tts.TtsSession._instance = null;
+      let session = tts.TtsSession._instance;
+      if (!session) {
+        try { session = await open(wanted); }
+        catch (e) {
+          if (lang !== "en" || wanted === EN_VOICES.hfc_female) throw e;
+          tts.TtsSession._instance = null;
+          session = await open(EN_VOICES.hfc_female); // chosen voice unavailable: use the default
+        }
+      }
       checkAbort(signal);
 
       // Synthesize one chunk. If the engine fails (e.g. out of memory), split the
@@ -298,15 +286,16 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
       for (const i of idxs) {
         checkAbort(signal);
         onP((done / segs.length) * 100, `توليد الصوت ${done + 1} من ${segs.length}`);
-        const text = speakable(segs[i].text);
-        if (text) {
+        const text = normalizeForSpeech(segs[i].text, lang);
+        if (/[\p{L}\p{N}]/u.test(text)) {
           const got = await synthOne(text, 0);
           if (!rate) rate = got[0].rate;
-          const parts = got.map((g) => resample(g.pcm, g.rate, rate));
+          const parts = got.map((g) => polishClip(resample(g.pcm, g.rate, rate), rate));
           const merged = new Int16Array(parts.reduce((n, p) => n + p.length, 0));
           let o = 0;
           for (const p of parts) { merged.set(p, o); o += p.length; }
-          pcms[i] = merged;
+          // Arabic voice reads a little fast; slow it slightly by default.
+          pcms[i] = timeStretch(merged, rate, speed * (lang === "ar" ? 0.95 : 1));
         }
         done++;
         await tick(); // keep the page responsive on phones
@@ -314,18 +303,26 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
     }
 
     if (!rate) throw new Error("لا يوجد نص قابل للنطق في الأقسام المحددة");
-    const gap = Math.round(rate * Math.max(0, opts.pause ?? 0.25));
-    const total = pcms.reduce((n, p) => n + (p ? p.length + gap : 0), 0);
+    const scale = Math.max(0, opts.pause ?? 0.4) / 0.4;
+    const gaps = segs.map((sg) => Math.round(rate * sg.pause * scale));
+    const total = pcms.reduce((n, p, i) => n + (p ? p.length + gaps[i] : 0), 0);
     const pcm = new Int16Array(total);
     const timings: Timing[] = [];
     let off = 0;
     pcms.forEach((p, i) => {
       if (!p) return;
       pcm.set(p, off);
-      timings.push({ seg: segs[i], start: off / rate, end: (off + p.length + gap) / rate });
-      off += p.length + gap;
+      const start = off / rate, end = (off + p.length + gaps[i]) / rate;
+      const prev = timings[timings.length - 1];
+      if (prev && prev.seg.section === segs[i].section && prev.group === segs[i].group) {
+        prev.seg.text += " " + segs[i].text; prev.end = end; // same slide: extend it
+      } else {
+        timings.push({ seg: { text: segs[i].text, label: segs[i].label, section: segs[i].section }, start, end, group: segs[i].group });
+      }
+      off += p.length + gaps[i];
       pcms[i] = null; // free each part after merging
     });
+    normalizePeak(pcm);
     return { wav: encodeWav(pcm, rate), pcm, rate, duration: total / rate, timings };
   } finally {
     restoreThreads();
