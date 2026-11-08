@@ -1,20 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Sparkles, User, Printer, Save } from "lucide-react";
+import { Send, Loader2, Printer, Menu, CheckCheck } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
 import { PrintReport } from "@/components/PrintReport";
-import { useCategoryLabel } from "@/lib/departments";
+import { useCategoryLabel, useDepartment } from "@/lib/departments";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$threadId")({
   component: ChatThread,
-  validateSearch: (s: Record<string, unknown>) => ({ category: typeof s.category === "string" ? s.category : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    category: typeof s.category === "string" ? s.category : undefined,
+    print: s.print === true || s.print === "true" || s.print === 1 || s.print === "1" ? (true as const) : undefined,
+  }),
   head: () => ({ meta: [
     { title: "الدردشة والتقارير | My Favourite Project" },
     { name: "description", content: "محادثات الأقسام وتقاريرها القابلة للطباعة." },
@@ -25,19 +26,55 @@ export const Route = createFileRoute("/chat/$threadId")({
   ] }),
 });
 
+/* ------------------------------- helpers -------------------------------- */
+
 function getText(m: UIMessage) {
   return m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
 }
 
+const fmtTime = (d: Date) => d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+const fmtDateTime = (d: Date) => d.toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" });
+const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+
+function dayLabel(d: Date) {
+  const now = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(d, now)) return "اليوم";
+  if (sameDay(d, yesterday)) return "أمس";
+  return d.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+type Exchange = { id: string; question?: UIMessage; answers: UIMessage[] };
+
+/** Groups a flat message list into question → answer(s) exchanges. */
+function groupExchanges(msgs: UIMessage[]): Exchange[] {
+  const out: Exchange[] = [];
+  for (const m of msgs) {
+    if (m.role === "user") out.push({ id: m.id, question: m, answers: [] });
+    else if (m.role === "assistant") {
+      const last = out[out.length - 1];
+      if (last) last.answers.push(m);
+      else out.push({ id: m.id, answers: [m] });
+    }
+  }
+  return out;
+}
+
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/gm;
+
+/* ------------------------------ route shell ------------------------------ */
+
 function ChatThread() {
   const { threadId } = Route.useParams();
-  const { category } = Route.useSearch();
-  const [initial, setInitial] = useState<UIMessage[] | null>(null);
+  const { category, print } = Route.useSearch();
+  const [loaded, setLoaded] = useState<{ messages: UIMessage[]; times: Record<string, string> } | null>(null);
   const { session } = useAuth();
   const token = session?.access_token ?? null;
 
   useEffect(() => {
     let cancelled = false;
+    setLoaded(null);
     (async () => {
       const { data, error } = await supabase
         .from("chat_messages")
@@ -45,20 +82,43 @@ function ChatThread() {
         .eq("thread_id", threadId)
         .order("created_at", { ascending: true });
       if (cancelled) return;
-      if (error) { toast.error(error.message); setInitial([]); return; }
-      setInitial((data ?? []).map((r) => r.message as unknown as UIMessage));
+      if (error) { toast.error(error.message); setLoaded({ messages: [], times: {} }); return; }
+      const messages = (data ?? []).map((r) => r.message as unknown as UIMessage);
+      const times: Record<string, string> = {};
+      (data ?? []).forEach((r, i) => { if (messages[i]?.id && r.created_at) times[messages[i].id] = r.created_at as string; });
+      setLoaded({ messages, times });
     })();
     return () => { cancelled = true; };
   }, [threadId]);
 
-  if (initial === null || token === null) {
-    return <div className="flex-1 grid place-items-center text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>;
+  if (loaded === null || token === null) {
+    return <div className="wa-wallpaper flex-1 grid place-items-center text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>;
   }
 
-  return <ChatInner threadId={threadId} initial={initial} token={token} category={category} />;
+  return (
+    <ChatInner
+      key={threadId}
+      threadId={threadId}
+      initial={loaded.messages}
+      initialTimes={loaded.times}
+      token={token}
+      category={category}
+      autoPrint={print === true}
+    />
+  );
 }
 
-function ChatInner({ threadId, initial, token, category }: { threadId: string; initial: UIMessage[]; token: string; category?: string }) {
+/* ------------------------------ conversation ----------------------------- */
+
+function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint }: {
+  threadId: string;
+  initial: UIMessage[];
+  initialTimes: Record<string, string>;
+  token: string;
+  category?: string;
+  autoPrint: boolean;
+}) {
+  const navigate = useNavigate();
   const transport = new DefaultChatTransport({
     api: "/api/chat",
     headers: { Authorization: `Bearer ${token}` },
@@ -71,25 +131,57 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
     onError: (e) => toast.error(e.message),
   });
   const [input, setInput] = useState("");
+  const [printIds, setPrintIds] = useState<Set<string> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const timesRef = useRef<Map<string, Date>>(new Map(Object.entries(initialTimes).map(([id, iso]) => [id, new Date(iso)])));
+  const autoPrinted = useRef(false);
+
+  const isBusy = status === "submitted" || status === "streaming";
+  const latest = useRef({ count: messages.length, busy: isBusy });
+  latest.current = { count: messages.length, busy: isBusy };
+
+  const { dept } = useDepartment(category);
+  const deptLabel = useCategoryLabel(category) || "الدردشة";
+  const avatar = dept?.emoji ?? "💬";
+
+  /** Message time: stored time for loaded messages, "first seen" for new ones. */
+  const timeOf = (id: string) => {
+    let d = timesRef.current.get(id);
+    if (!d) { d = new Date(); timesRef.current.set(id, d); }
+    return d;
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
-  const [printIds, setPrintIds] = useState<Set<string> | null>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, [threadId, status]);
+  useEffect(() => { if (!input && inputRef.current) inputRef.current.style.height = "auto"; }, [input]);
 
-  const isBusy = status === "submitted" || status === "streaming";
-  const reportTitle = getText(messages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).slice(0, 80);
-  const deptLabel = useCategoryLabel(category) || "الدردشة";
-  const printMeta = [
-    { label: "القسم", value: deptLabel },
-    { label: "المنتج / الموضوع", value: reportTitle || "—" },
-    { label: "التاريخ", value: new Date().toLocaleString("ar-EG") },
-    { label: "عدد العناصر", value: String(messages.length) },
-  ];
+  /** Prints the whole thread (ids = null) or only the given messages. */
+  const runPrint = useCallback(async (ids: Set<string> | null) => {
+    if (latest.current.busy) { toast.info("انتظر حتى تنتهي الإجابة ثم اطبع"); return; }
+    if (latest.current.count === 0) { toast.info("لا توجد رسائل للطباعة في هذه المحادثة"); return; }
+    setPrintIds(ids);
+    // Let the print layout mount, then wait for fonts and the company logo.
+    await new Promise((r) => setTimeout(r, 450));
+    try { await document.fonts?.ready; } catch { /* ignore */ }
+    const images = Array.from(document.querySelectorAll<HTMLImageElement>(".print-root img"));
+    await Promise.all(images.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }))));
+    window.print();
+    setPrintIds(null);
+  }, []);
+
+  // Opened from the conversation list with ?print=1 → print once, then clean the URL.
+  useEffect(() => {
+    if (!autoPrint) { autoPrinted.current = false; return; }
+    if (autoPrinted.current) return;
+    autoPrinted.current = true;
+    void runPrint(null).finally(() => {
+      void navigate({ to: "/chat/$threadId", params: { threadId }, search: { category }, replace: true });
+    });
+  }, [autoPrint, runPrint, navigate, threadId, category]);
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -107,112 +199,179 @@ function ChatInner({ threadId, initial, token, category }: { threadId: string; i
     const idx = messages.findIndex((x) => x.id === answerId);
     let q = idx - 1;
     while (q >= 0 && messages[q].role !== "user") q--;
-    setPrintIds(new Set([answerId, ...(q >= 0 ? [messages[q].id] : [])]));
-    setTimeout(() => {
-      window.print();
-      setPrintIds(null);
-    }, 50);
+    void runPrint(new Set([answerId, ...(q >= 0 ? [messages[q].id] : [])]));
   };
+
+  /* ------------------------------- print data ------------------------------ */
   const printMessages = printIds ? messages.filter((m) => printIds.has(m.id)) : messages;
+  const exchanges = groupExchanges(printMessages);
+  const firstQuestion = getText(messages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).trim();
+  const reportTitle = firstQuestion.slice(0, 80);
+  const answerText = exchanges.flatMap((e) => e.answers.map(getText)).join("\n");
+  const stats = {
+    questions: exchanges.filter((e) => e.question).length,
+    answers: exchanges.reduce((n, e) => n + e.answers.filter((a) => getText(a).trim()).length, 0),
+    tables: (answerText.match(TABLE_SEPARATOR) ?? []).length,
+    sections: (answerText.match(/^##\s+/gm) ?? []).length,
+  };
+  const firstAt = printMessages[0] ? timeOf(printMessages[0].id) : null;
+  const lastAt = printMessages.length ? timeOf(printMessages[printMessages.length - 1].id) : null;
+  const printMeta = [
+    { label: "نطاق الطباعة", value: printIds ? "سؤال وإجابة محددة" : "المحادثة كاملة" },
+    { label: "بداية المحادثة", value: firstAt ? fmtDateTime(firstAt) : "—" },
+    { label: "آخر رسالة", value: lastAt ? fmtDateTime(lastAt) : "—" },
+  ];
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      {/* Standalone full-length print layout (outside every scroll container). */}
-      <PrintReport title="تقرير الدردشة" department={deptLabel} product={reportTitle || undefined} meta={printMeta.filter((item) => !["القسم", "المنتج / الموضوع", "التاريخ"].includes(item.label))}>
-        {printMessages.map((m) => (
-          <section key={`p-${m.id}`} className="print-block">
-            <div className="print-block-label">{m.role === "user" ? "السؤال:" : "التقرير:"}</div>
-            {m.role === "user" ? (
-              <p style={{ whiteSpace: "pre-wrap" }}>{getText(m)}</p>
-            ) : (
-              <MarkdownView>{getText(m)}</MarkdownView>
-            )}
-          </section>
-        ))}
-      </PrintReport>
-      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-card/50 print:hidden">
-        <div className="text-xs text-muted-foreground">
-          💾 كل بحث يُحفظ تلقائيًا في قاعدة بياناتك
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => window.print()} className="gap-1">
-            <Printer className="size-4" /> طباعة كتقرير
-          </Button>
-          <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-            <Save className="size-3.5" /> محفوظ
-          </span>
-        </div>
-      </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-3xl mx-auto space-y-6 print:max-w-full">
-          <div className="print-only mb-4 border-b pb-3">
-            <h1 className="text-xl font-extrabold">تقرير — {deptLabel}</h1>
-            <p className="text-xs">
-              {reportTitle ? `الموضوع: ${reportTitle} — ` : ""}التاريخ: {new Date().toLocaleDateString("ar-EG")} — My Favourite Project
-            </p>
-          </div>
-          {messages.length === 0 && (
-            <div className="text-center text-muted-foreground py-12">
-              <Sparkles className="size-10 mx-auto mb-3 text-primary" />
-              <p>ابدأ المحادثة — اسأل عن أي شيء</p>
+    <div className="wa-main">
+      {/* Standalone A4 report layout (printed only; skipped while an answer streams). */}
+      <PrintReport
+        title={printIds ? "تقرير سؤال وإجابة" : "تقرير المحادثة"}
+        department={deptLabel}
+        product={reportTitle || undefined}
+        reportNumber={`CHT-${threadId.slice(0, 8).toUpperCase()}`}
+        meta={printMeta}
+      >
+        {!isBusy && (
+          <>
+            <div className="print-chat-summary">
+              <div className="print-stat"><strong>{stats.questions}</strong><span>الأسئلة</span></div>
+              <div className="print-stat"><strong>{stats.answers}</strong><span>الردود</span></div>
+              <div className="print-stat"><strong>{stats.tables}</strong><span>الجداول</span></div>
+              <div className="print-stat"><strong>{stats.sections}</strong><span>الأقسام</span></div>
             </div>
-          )}
-          {messages.map((m) => {
-            const text = getText(m);
-            const isUser = m.role === "user";
-            return (
-              <div key={m.id} className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-                <div className={`size-8 shrink-0 rounded-full grid place-items-center ${isUser ? "bg-primary text-primary-foreground" : "bg-gradient-to-br from-primary to-accent text-primary-foreground"}`}>
-                  {isUser ? <User className="size-4" /> : <Sparkles className="size-4" />}
-                </div>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${isUser ? "bg-primary text-primary-foreground" : "bg-card border"}`}>
-                  {isUser ? (
-                    <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
-                  ) : (
-                    <MarkdownView>{text || "..."}</MarkdownView>
-                  )}
-                  {!isUser && text && (
-                    <div className="mt-2 flex justify-end print:hidden">
-                      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => printSingle(m.id)}>
-                        <Printer className="size-3.5" /> طباعة هذا السؤال والإجابة
-                      </Button>
-                    </div>
-                  )}
-                </div>
+
+            {exchanges.length > 1 && (
+              <div className="print-toc">
+                <div className="print-toc-title">فهرس الأسئلة</div>
+                <ol>
+                  {exchanges.map((ex) => (
+                    <li key={`toc-${ex.id}`}>{(ex.question ? getText(ex.question) : "—").replace(/\s+/g, " ").slice(0, 100)}</li>
+                  ))}
+                </ol>
               </div>
+            )}
+
+            {exchanges.map((ex, i) => (
+              <div key={`ex-${ex.id}`} className="print-exchange">
+                {ex.question && (
+                  <div className="print-q">
+                    <div className="print-q-head">
+                      <span className="print-chip">سؤال {i + 1}</span>
+                      <span className="print-time">{fmtDateTime(timeOf(ex.question.id))}</span>
+                    </div>
+                    <p className="print-q-text">{getText(ex.question)}</p>
+                  </div>
+                )}
+                {ex.answers.filter((a) => getText(a).trim()).map((a) => (
+                  <div key={`pa-${a.id}`} className="print-a">
+                    <div className="print-a-head">
+                      <span className="print-chip is-answer">الإجابة</span>
+                      <span className="print-time">{fmtDateTime(timeOf(a.id))}</span>
+                    </div>
+                    <MarkdownView cards>{getText(a)}</MarkdownView>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <div className="print-approvals">
+              <div><b>إعداد</b>الاسم: <br />التوقيع: <br />التاريخ:</div>
+              <div><b>مراجعة</b>الاسم: <br />التوقيع: <br />التاريخ:</div>
+              <div><b>اعتماد</b>الاسم: <br />التوقيع: <br />التاريخ:</div>
+            </div>
+          </>
+        )}
+      </PrintReport>
+
+      <header className="wa-header print:hidden">
+        <button type="button" className="wa-icon-btn md:hidden" aria-label="المحادثات" onClick={() => window.dispatchEvent(new Event("wa:open-list"))}>
+          <Menu className="size-5" />
+        </button>
+        <div className="wa-avatar">{avatar}</div>
+        <div className="min-w-0 flex-1">
+          <div className="wa-title">{deptLabel}</div>
+          <div className="wa-sub">{isBusy ? "يكتب الآن..." : "💾 تُحفظ تلقائيًا"}</div>
+        </div>
+        <button type="button" className="wa-print-btn" onClick={() => void runPrint(null)} disabled={isBusy || messages.length === 0} title="طباعة المحادثة كتقرير">
+          <Printer className="size-4" />
+          <span className="hidden sm:inline">طباعة المحادثة</span>
+        </button>
+      </header>
+
+      <div ref={scrollRef} className="wa-wallpaper wa-scroll print:hidden">
+        <div className="wa-thread">
+          <div className="wa-notice">🔒 تُحفظ هذه المحادثة في قاعدة بياناتك، ويمكن طباعتها كتقرير رسمي بهوية الشركة.</div>
+          {messages.length === 0 && (
+            <div className="wa-day">ابدأ المحادثة — اسأل عن أي شيء</div>
+          )}
+          {messages.map((m, i) => {
+            const isUser = m.role === "user";
+            const text = getText(m);
+            const at = timeOf(m.id);
+            const prev = messages[i - 1];
+            const showDay = !prev || !sameDay(timeOf(prev.id), at);
+            const first = showDay || !prev || prev.role !== m.role;
+            return (
+              <Fragment key={m.id}>
+                {showDay && <div className="wa-day">{dayLabel(at)}</div>}
+                <div className={`wa-msg ${isUser ? "out" : "in"} ${first ? "first" : "grouped"}`}>
+                  <div className={`wa-bubble ${isUser ? "out" : "in"} ${first ? "tail" : ""}`}>
+                    {isUser ? (
+                      <p className="whitespace-pre-wrap">{text}</p>
+                    ) : (
+                      <MarkdownView cards>{text || "..."}</MarkdownView>
+                    )}
+                    <div className="wa-meta">
+                      {!isUser && text && (
+                        <button type="button" className="wa-mini-btn" onClick={() => printSingle(m.id)} title="طباعة هذا السؤال والإجابة" aria-label="طباعة هذا السؤال والإجابة">
+                          <Printer className="size-3.5" />
+                        </button>
+                      )}
+                      <span>{fmtTime(at)}</span>
+                      {isUser && <CheckCheck className="size-4 wa-tick" />}
+                    </div>
+                  </div>
+                </div>
+              </Fragment>
             );
           })}
           {status === "submitted" && (
-            <div className="flex gap-3">
-              <div className="size-8 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-primary-foreground"><Sparkles className="size-4" /></div>
-              <div className="bg-card border rounded-2xl px-4 py-3 inline-flex items-center gap-1">
-                <span className="size-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="size-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="size-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div className="wa-msg in first">
+              <div className="wa-bubble in tail">
+                <span className="inline-flex items-center gap-1 py-1">
+                  <span className="size-2 rounded-full bg-current opacity-50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="size-2 rounded-full bg-current opacity-50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="size-2 rounded-full bg-current opacity-50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                </span>
               </div>
             </div>
           )}
-          {error && <p className="text-sm text-destructive text-center">{error.message}</p>}
+          {error && <div className="wa-day" style={{ color: "#ef4444" }}>{error.message}</div>}
         </div>
       </div>
-      <form onSubmit={submit} className="border-t bg-card p-3 print:hidden">
-        <div className="max-w-3xl mx-auto flex items-end gap-2">
-          <Textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
-            }}
-            placeholder="اكتب رسالتك..."
-            rows={1}
-            className="resize-none min-h-[44px] max-h-40"
-            disabled={isBusy}
-          />
-          <Button type="submit" size="icon" className="size-11 shrink-0" disabled={isBusy || !input.trim()}>
-            {isBusy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          </Button>
-        </div>
+
+      <form onSubmit={submit} className="wa-composer print:hidden">
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); }
+          }}
+          placeholder="اكتب رسالتك..."
+          rows={1}
+          className="wa-input"
+          disabled={isBusy}
+        />
+        <button type="submit" className="wa-send" disabled={isBusy || !input.trim()} aria-label="إرسال">
+          {isBusy ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-5 -scale-x-100" />}
+        </button>
       </form>
     </div>
   );

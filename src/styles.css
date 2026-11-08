@@ -307,6 +307,310 @@
   max-width: 100%;
 }
 
+/* Component layer: Tailwind utilities (md:hidden, hidden, ...) must still override these. */
+@layer components {
+/* --------------------- Markdown body (answers, cards, callouts) --------------------- */
+.md-body h1 { font-size: 1.2rem; font-weight: 800; line-height: 1.5; margin: 0.25rem 0 0.6rem; }
+.md-body h2 { font-size: 1.05rem; font-weight: 700; line-height: 1.5; margin: 1rem 0 0.4rem; }
+.md-body h3 { font-size: 0.95rem; font-weight: 700; line-height: 1.5; margin: 0.8rem 0 0.3rem; }
+.md-body p { margin: 0.45rem 0; }
+.md-body ul { list-style: disc; padding-inline-start: 1.4rem; margin: 0.4rem 0; }
+.md-body ol { list-style: decimal; padding-inline-start: 1.4rem; margin: 0.4rem 0; }
+.md-body li { margin: 0.2rem 0; }
+.md-body li > ul, .md-body li > ol { margin: 0.2rem 0; }
+.md-body strong { font-weight: 700; }
+.md-body hr { border: 0; border-top: 1px solid var(--border); margin: 0.9rem 0; }
+.md-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  background: color-mix(in oklab, var(--muted) 85%, transparent);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  direction: ltr;
+  unicode-bidi: embed;
+}
+.md-body pre {
+  direction: ltr;
+  text-align: left;
+  overflow-x: auto;
+  margin: 0.6rem 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.6rem;
+  background: color-mix(in oklab, var(--muted) 85%, transparent);
+}
+.md-body pre code { background: transparent; padding: 0; }
+.md-body > :first-child { margin-top: 0; }
+.md-body > :last-child { margin-bottom: 0; }
+
+/* Section card (template-style layout for every "## heading" block) */
+.md-card {
+  margin: 0.7rem 0;
+  border: 1px solid color-mix(in oklab, #64748b 30%, transparent);
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+.md-card-head {
+  padding: 0.35rem 0.75rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: color-mix(in oklab, #64748b 13%, transparent);
+}
+.md-card-body { padding: 0.1rem 0.75rem 0.45rem; }
+.md-card-body > :first-child { margin-top: 0.4rem; }
+
+/* Callout card (Markdown blockquote) */
+.md-callout {
+  --md-accent: #0ea5e9;
+  margin: 0.6rem 0;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.5rem;
+  border-inline-start: 4px solid var(--md-accent);
+  background: color-mix(in oklab, var(--md-accent) 11%, transparent);
+}
+.md-callout p { margin: 0.2rem 0; }
+.md-callout.md-warn { --md-accent: #f59e0b; }
+.md-callout.md-ok { --md-accent: #10b981; }
+.md-callout.md-danger { --md-accent: #ef4444; }
+
+/* --------------------- WhatsApp-style chat --------------------- */
+.wa-scope {
+  --wa-bg: #efeae2;
+  --wa-doodle: rgba(11, 20, 26, 0.05);
+  --wa-panel: #f0f2f5;
+  --wa-header: #f0f2f5;
+  --wa-list-bg: #ffffff;
+  --wa-border: #e9edef;
+  --wa-row-hover: #f5f6f6;
+  --wa-row-active: #f0f2f5;
+  --wa-in: #ffffff;
+  --wa-out: #d9fdd3;
+  --wa-text: #111b21;
+  --wa-muted: #667781;
+  --wa-green: #00a884;
+  --wa-tick: #53bdeb;
+  --wa-chip: rgba(255, 255, 255, 0.88);
+  --wa-notice: #fff5c4;
+  --wa-input: #ffffff;
+  color: var(--wa-text);
+}
+.dark .wa-scope {
+  --wa-bg: #0b141a;
+  --wa-doodle: rgba(255, 255, 255, 0.035);
+  --wa-panel: #111b21;
+  --wa-header: #202c33;
+  --wa-list-bg: #111b21;
+  --wa-border: #222d34;
+  --wa-row-hover: #202c33;
+  --wa-row-active: #2a3942;
+  --wa-in: #202c33;
+  --wa-out: #005c4b;
+  --wa-text: #e9edef;
+  --wa-muted: #8696a0;
+  --wa-chip: rgba(24, 34, 41, 0.88);
+  --wa-notice: #182229;
+  --wa-input: #2a3942;
+}
+
+.wa-app { background: var(--wa-panel); }
+.wa-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+
+/* Conversation list */
+.wa-list {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--wa-list-bg);
+  border-left: 1px solid var(--wa-border);
+}
+.wa-list-head, .wa-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 3.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--wa-header);
+  border-bottom: 1px solid var(--wa-border);
+}
+.wa-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #25d366, #00a884);
+  color: #fff;
+  font-size: 1.2rem;
+}
+.wa-title { font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wa-sub { font-size: 0.75rem; color: var(--wa-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wa-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--wa-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.wa-icon-btn:hover { background: color-mix(in oklab, var(--wa-muted) 18%, transparent); color: var(--wa-text); }
+.wa-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--wa-panel);
+  color: var(--wa-muted);
+}
+.wa-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--wa-text); font-size: 0.85rem; }
+.wa-list-body { flex: 1; overflow-y: auto; }
+.wa-row { display: flex; align-items: center; gap: 0.1rem; padding-inline-end: 0.4rem; border-bottom: 1px solid var(--wa-border); }
+.wa-row:hover { background: var(--wa-row-hover); }
+.wa-row.active { background: var(--wa-row-active); }
+.wa-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.75rem; color: inherit; text-decoration: none; }
+.wa-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.wa-row-title { font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wa-row-time { flex-shrink: 0; font-size: 0.7rem; color: var(--wa-muted); }
+.wa-row-sub { font-size: 0.78rem; color: var(--wa-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wa-row-actions { display: flex; flex-shrink: 0; gap: 0.05rem; }
+.wa-row-actions .wa-icon-btn { width: 1.9rem; height: 1.9rem; }
+.wa-row-actions .wa-danger:hover { background: rgba(239, 68, 68, 0.14); color: #ef4444; }
+
+/* Conversation */
+.wa-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--wa-green);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wa-print-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.wa-print-btn:disabled { opacity: 0.45; cursor: default; }
+.wa-wallpaper {
+  background-color: var(--wa-bg);
+  background-image:
+    radial-gradient(var(--wa-doodle) 1.4px, transparent 1.7px),
+    radial-gradient(var(--wa-doodle) 1.4px, transparent 1.7px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+}
+.wa-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0.75rem 0.75rem 1rem; }
+.wa-thread { max-width: 58rem; margin: 0 auto; display: flex; flex-direction: column; }
+.wa-day, .wa-notice {
+  align-self: center;
+  margin: 0.5rem 0;
+  padding: 0.28rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--wa-muted);
+  background: var(--wa-chip);
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  text-align: center;
+}
+.wa-notice { max-width: 34rem; background: var(--wa-notice); line-height: 1.6; }
+.wa-msg { display: flex; }
+.wa-msg.out { justify-content: flex-start; }
+.wa-msg.in { justify-content: flex-end; }
+.wa-msg.first { margin-top: 0.5rem; }
+.wa-msg.grouped { margin-top: 0.12rem; }
+.wa-bubble {
+  position: relative;
+  min-width: 4.8rem;
+  max-width: min(92%, 50rem);
+  padding: 0.4rem 0.6rem 0.3rem;
+  border-radius: 0.55rem;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  color: var(--wa-text);
+  font-size: 0.93rem;
+  line-height: 1.65;
+  word-break: break-word;
+}
+.wa-bubble.out { background: var(--wa-out); }
+.wa-bubble.in { background: var(--wa-in); }
+.wa-bubble.out.tail { border-top-right-radius: 0; }
+.wa-bubble.in.tail { border-top-left-radius: 0; }
+.wa-bubble.tail::before { content: ""; position: absolute; top: 0; width: 8px; height: 13px; }
+.wa-bubble.out.tail::before { right: -8px; background: var(--wa-out); clip-path: polygon(0 0, 100% 0, 0 100%); }
+.wa-bubble.in.tail::before { left: -8px; background: var(--wa-in); clip-path: polygon(0 0, 100% 0, 100% 100%); }
+.wa-bubble .table-scroll { margin: 0.4rem 0; }
+.wa-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  color: var(--wa-muted);
+}
+.wa-tick { color: var(--wa-tick); }
+.wa-mini-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--wa-muted);
+  cursor: pointer;
+}
+.wa-mini-btn:hover { background: color-mix(in oklab, var(--wa-muted) 18%, transparent); color: var(--wa-text); }
+.wa-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--wa-header);
+  border-top: 1px solid var(--wa-border);
+}
+.wa-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  max-height: 10rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  outline: 0;
+  resize: none;
+  border-radius: 1.4rem;
+  background: var(--wa-input);
+  color: var(--wa-text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.wa-input::placeholder { color: var(--wa-muted); }
+.wa-send {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--wa-green);
+  color: #fff;
+  cursor: pointer;
+}
+.wa-send:disabled { opacity: 0.5; cursor: default; }
+}
+
+/* Unlayered on purpose: must beat the base `.rich-content table` rules above. */
+.wa-bubble .rich-content table { margin: 0; font-size: 0.8rem; }
+
 /* --------------------- Print / PDF report --------------------- */
 
 /* Standalone print layout: hidden on screen, printed in full (multi-page). */
@@ -462,6 +766,128 @@
   .rich-content section, .rich-content article, .rich-content .print-keep { page-break-inside: avoid; break-inside: avoid; }
   .table-scroll { overflow: visible !important; }
   a[href]::after { content: ""; }
+
+  /* ===== Chat report: summary cards, TOC, Q/A cards, section cards, tables ===== */
+  .print-root .print-chat-summary,
+  .print-root .print-stat,
+  .print-root .print-q,
+  .print-root .print-chip,
+  .print-root .md-card-head,
+  .print-root .md-callout,
+  .print-root .md-body thead th,
+  .print-root .md-body tbody tr:nth-child(even) td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-root .print-chat-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6pt; margin: 0 0 10pt; break-inside: avoid; page-break-inside: avoid; }
+  .print-root .print-stat { border: 0.75pt solid #CBD5E1; border-radius: 5pt; padding: 5pt 4pt; text-align: center; background: #F8FAFC !important; }
+  .print-root .print-stat strong { display: block; font-size: 15pt; font-weight: 800; line-height: 1.3; color: #1E3A5F !important; }
+  .print-root .print-stat span { font-size: 8.5pt; color: #64748B !important; }
+
+  .print-root .print-toc { margin: 0 0 12pt; padding: 6pt 10pt 4pt; border: 0.75pt solid #CBD5E1; border-radius: 5pt; break-inside: avoid; page-break-inside: avoid; }
+  .print-root .print-toc-title { margin-bottom: 3pt; font-size: 10.5pt; font-weight: 800; color: #1E3A5F !important; }
+  .print-root .print-toc ol { margin: 0; padding-inline-start: 16pt; list-style: decimal; }
+  .print-root .print-toc li { font-size: 9.5pt !important; line-height: 1.7 !important; color: #334155 !important; }
+
+  .print-root .print-exchange { margin: 0 0 14pt; }
+  .print-root .print-q {
+    margin-bottom: 6pt;
+    padding: 6pt 10pt;
+    border: 0.75pt solid #CBD5E1;
+    border-inline-start: 4pt solid #1E3A5F;
+    border-radius: 5pt;
+    background: #F1F5F9 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-root .print-a {
+    padding: 6pt 10pt 4pt;
+    border: 0.75pt solid #CBD5E1;
+    border-inline-start: 4pt solid #0F766E;
+    border-radius: 5pt;
+  }
+  .print-root .print-q-head,
+  .print-root .print-a-head { display: flex; align-items: center; justify-content: space-between; gap: 8pt; margin-bottom: 3pt; break-after: avoid; page-break-after: avoid; }
+  .print-root .print-chip { display: inline-block; padding: 1pt 9pt; border-radius: 9pt; font-size: 8.5pt; font-weight: 700; line-height: 1.6; background: #1E3A5F !important; color: #FFFFFF !important; }
+  .print-root .print-chip.is-answer { background: #0F766E !important; }
+  .print-root .print-time { font-size: 8.5pt; color: #64748B !important; }
+  .print-root .print-q-text { margin: 0; font-size: 11pt !important; font-weight: 600 !important; white-space: pre-wrap; color: #0F172A !important; }
+
+  /* Answer typography inside the report */
+  .print-root .print-a .md-body h1 {
+    margin: 2pt 0 8pt !important;
+    padding-bottom: 3pt !important;
+    font-size: 15pt !important;
+    color: #0F172A !important;
+    border-bottom: 1.5pt solid #0F766E !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+  .print-root .md-body h2 { font-size: 12.5pt !important; margin: 10pt 0 4pt !important; }
+  .print-root .md-body h3 { font-size: 11.5pt !important; margin: 8pt 0 3pt !important; }
+  .print-root .md-body ul { list-style: disc; padding-inline-start: 16pt; }
+  .print-root .md-body ol { list-style: decimal; padding-inline-start: 16pt; }
+  .print-root .md-body li { margin: 1pt 0; }
+
+  /* Section cards (templates) */
+  .print-root .md-card { margin: 8pt 0; border: 0.75pt solid #94A3B8; border-radius: 5pt; }
+  .print-root .md-card-head {
+    padding: 3pt 9pt;
+    font-size: 11.5pt;
+    font-weight: 800;
+    border-bottom: 0.75pt solid #94A3B8;
+    border-radius: 5pt 5pt 0 0;
+    background: #E8EEF5 !important;
+    color: #1E3A5F !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .print-root .md-card-body { padding: 2pt 9pt 4pt; }
+
+  /* Callout cards */
+  .print-root .md-callout {
+    margin: 6pt 0;
+    padding: 4pt 9pt;
+    border: 0.75pt solid #BAE6FD;
+    border-inline-start: 3.5pt solid #0EA5E9;
+    border-radius: 4pt;
+    background: #F0F9FF !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-root .md-callout.md-warn { border-color: #FDE68A; border-inline-start-color: #F59E0B; background: #FFFBEB !important; }
+  .print-root .md-callout.md-ok { border-color: #A7F3D0; border-inline-start-color: #10B981; background: #ECFDF5 !important; }
+  .print-root .md-callout.md-danger { border-color: #FECACA; border-inline-start-color: #EF4444; background: #FEF2F2 !important; }
+  .print-root .md-callout p { margin: 2pt 0 !important; }
+
+  /* Tables */
+  .print-root .md-body table { margin: 6pt 0 !important; border: 0.75pt solid #64748B !important; font-size: 9.5pt !important; }
+  .print-root .md-body th,
+  .print-root .md-body td { padding: 3pt 5pt !important; border: 0.5pt solid #94A3B8 !important; text-align: start; }
+  .print-root .md-body thead th { background: #E2E8F0 !important; color: #0F172A !important; font-weight: 800; border-bottom: 1.5pt solid #1E3A5F !important; }
+  .print-root .md-body tbody tr:nth-child(even) td { background: #F8FAFC !important; }
+  .print-root .md-table-keep { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Code */
+  .print-root .md-body pre {
+    padding: 5pt 8pt;
+    border: 0.75pt solid #CBD5E1;
+    border-radius: 4pt;
+    background: #F8FAFC !important;
+    font-size: 9pt;
+    white-space: pre-wrap;
+    word-break: break-word;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-root .md-body code { padding: 0 3pt; border-radius: 3pt; background: #F1F5F9 !important; font-size: 9pt; }
+  .print-root .md-body pre code { padding: 0; background: transparent !important; }
+
+  /* Approval boxes */
+  .print-root .print-approvals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10pt; margin-top: 18pt; break-inside: avoid; page-break-inside: avoid; }
+  .print-root .print-approvals > div { min-height: 50pt; padding: 5pt 8pt; border: 0.75pt solid #94A3B8; border-radius: 5pt; font-size: 9pt; line-height: 1.9; color: #475569 !important; }
+  .print-root .print-approvals b { display: block; margin-bottom: 1pt; font-size: 9.5pt; color: #1E3A5F !important; }
 }
 
 .print-only { display: none; }

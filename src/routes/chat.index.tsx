@@ -51,12 +51,12 @@ function ChatIndex() {
   }, [category, cat.label, navigate, status, session]);
 
   return (
-    <div className="flex-1 grid place-items-center p-8">
-      <div className="text-center space-y-3 text-muted-foreground">
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent grid place-items-center text-primary-foreground">
+    <div className="wa-wallpaper flex-1 grid place-items-center p-8">
+      <div className="text-center space-y-3" style={{ color: "var(--wa-muted)" }}>
+        <div className="wa-avatar mx-auto !size-16 !text-3xl">
           <Sparkles className="size-8" />
         </div>
-        <h2 className="text-xl font-bold text-foreground">{cat.emoji} {cat.label}</h2>
+        <h2 className="text-xl font-bold" style={{ color: "var(--wa-text)" }}>{cat.emoji} {cat.label}</h2>
         <div className="inline-flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" /> جاري تحضير المحادثة...</div>
       </div>
     </div>
