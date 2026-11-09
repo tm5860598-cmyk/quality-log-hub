@@ -8,6 +8,7 @@ import { Send, Loader2, Printer, Menu, CheckCheck } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
 import { PrintReport } from "@/components/PrintReport";
 import { openPrintWindow, printReport } from "@/lib/print-frame";
+import { printScope } from "@/lib/chat-print";
 import { useCategoryLabel, useDepartment } from "@/lib/departments";
 import { toast } from "sonner";
 
@@ -195,17 +196,12 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     await sendMessage({ text });
   };
 
-  const printSingle = (answerId: string) => {
-    const idx = messages.findIndex((x) => x.id === answerId);
-    let q = idx - 1;
-    while (q >= 0 && messages[q].role !== "user") q--;
-    void runPrint(new Set([answerId, ...(q >= 0 ? [messages[q].id] : [])]));
-  };
+  const printSingle = (answerId: string) => void runPrint(printScope(messages, answerId));
 
   /* ------------------------------- print data ------------------------------ */
   const printMessages = printIds ? messages.filter((m) => printIds.has(m.id)) : messages;
   const exchanges = groupExchanges(printMessages);
-  const firstQuestion = getText(messages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).trim();
+  const firstQuestion = getText(printMessages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).trim();
   const reportTitle = firstQuestion.slice(0, 80);
   const answerText = exchanges.flatMap((e) => e.answers.map(getText)).join("\n");
   const stats = {

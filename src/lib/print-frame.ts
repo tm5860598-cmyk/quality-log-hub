@@ -35,8 +35,10 @@ export async function printReport(popup: Window | null = openPrintWindow()): Pro
     try {
       const d = popup.document;
       d.open();
-      d.write(html.replace("</head>", `<style>@media screen{.print-root{display:block!important;width:auto!important;max-width:170mm;margin:0 auto!important;padding:12px}.pbar{position:sticky;top:0;background:#0f172a;padding:10px;text-align:center}.pbar button{font:700 16px Tahoma,Arial;padding:10px 22px;border-radius:10px;border:0;background:#fff}}</style></head>`).replace("<body", "<body").replace(/(<body[^>]*>)/, `$1<div class="pbar"><button onclick="print()">طباعة / حفظ PDF</button></div>`));
+      d.write(html.replace("</head>", `<style>@media screen{.print-root{display:block!important;width:auto!important;max-width:170mm;margin:0 auto!important;padding:12px}.pbar{position:sticky;top:0;background:#0f172a;padding:10px;text-align:center}.pbar button{font:700 16px Tahoma,Arial;padding:10px 22px;border-radius:10px;border:0;background:#fff}}</style></head>`).replace("<body", "<body").replace(/(<body[^>]*>)/, `$1<div class="pbar"><button type="button">طباعة / حفظ PDF</button></div>`));
       d.close();
+      // Wired from here (not an inline onclick) so a page CSP cannot block it.
+      d.querySelector(".pbar button")?.addEventListener("click", () => popup.print());
       await new Promise((r) => setTimeout(r, 700));
       try { await d.fonts?.ready; } catch { /* ignore */ }
       await Promise.all(Array.from(d.images).map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }))));
