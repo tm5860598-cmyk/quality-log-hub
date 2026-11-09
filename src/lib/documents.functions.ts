@@ -79,3 +79,69 @@ export const processDocument = createServerFn({ method: "POST" })
       throw new Error(msg);
     }
   });
+
+
+type IngestInput = {
+  documentId: string;
+  offset: number;
+  total: number;
+  pageCount: number;
+  chunks: Array<{ page: number; text: string }>;
+};
+
+/**
+ * Stores chunks that the BROWSER extracted (pdf.js + OCR for scanned files, Excel, PowerPoint, images...).
+ * Called slice by slice; the last slice marks the document as completed.
+ */
+export const ingestChunks = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: IngestInput) => {
+    if (!data?.documentId) throw new Error("documentId مطلوب");
+    if (!Array.isArray(data.chunks) || data.chunks.length > 40) throw new Error("دفعة المقاطع غير صالحة");
+    return {
+      documentId: String(data.documentId),
+      offset: Math.max(0, Number(data.offset) || 0),
+      total: Math.max(0, Number(data.total) || 0),
+      pageCount: Math.max(0, Number(data.pageCount) || 0),
+      chunks: data.chunks.map((c) => ({ page: Math.max(1, Number(c.page) || 1), text: String(c.text ?? "").slice(0, 6000) })).filter((c) => c.text.trim()),
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
+    const { data: doc, error: docErr } = await supabase.from("documents").select("id, category").eq("id", data.documentId).maybeSingle();
+    if (docErr) throw new Error(docErr.message);
+    if (!doc) throw new Error("المستند غير موجود");
+    try {
+      if (data.offset === 0) {
+        await supabase.from("documents").update({ status: "processing", error_message: null }).eq("id", doc.id);
+        await supabase.from("document_chunks").delete().eq("document_id", doc.id);
+      }
+      if (data.chunks.length) {
+        const { embedTexts } = await import("./embeddings.server");
+        const vectors = await embedTexts(data.chunks.map((c) => c.text));
+        const rows = data.chunks.map((c, i) => ({
+          document_id: doc.id,
+          category: doc.category,
+          page_number: c.page,
+          chunk_index: data.offset + i,
+          content: c.text,
+          embedding: JSON.stringify(vectors[i]),
+        }));
+        const { error } = await supabase.from("document_chunks").insert(rows);
+        if (error) throw new Error(error.message);
+      }
+      const next = data.offset + data.chunks.length;
+      const done = next >= data.total;
+      if (done) {
+        await supabase
+          .from("documents")
+          .update({ status: "completed", page_count: data.pageCount, error_message: null, processed_at: new Date().toISOString() })
+          .eq("id", doc.id);
+      }
+      return { nextOffset: next, done };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "فشل حفظ المقاطع";
+      await supabase.from("documents").update({ status: "failed", error_message: msg }).eq("id", doc.id);
+      throw new Error(msg);
+    }
+  });
