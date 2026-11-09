@@ -366,7 +366,7 @@ function ProductDetail({
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" onClick={() => void import("@/lib/print-frame").then((m) => m.printReport())}>
             <Printer className="size-4" /> طباعة كتقرير
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowQr(true)}>

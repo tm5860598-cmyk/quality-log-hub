@@ -241,7 +241,7 @@ function NcrDetail({ ncr, canEdit, canDelete, onChange, onDelete, userId }: {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4" /> طباعة كتقرير</Button>
+          <Button variant="outline" size="sm" onClick={() => void import("@/lib/print-frame").then((m) => m.printReport())}><Printer className="size-4" /> طباعة كتقرير</Button>
           {canDelete && (
             <Button variant="outline" size="sm" onClick={onDelete} className="text-rose-600 border-rose-200 hover:bg-rose-50">
               <Trash2 className="size-4" /> حذف
