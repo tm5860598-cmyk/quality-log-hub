@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { printReport } from "@/lib/print-frame";
 import { Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -294,9 +295,9 @@ function AppScreen({
     else { toast.success(t.reportDeleted); if (editingId === id) resetForm(); loadReports(); }
   };
 
-  const handlePrint = () => void import("@/lib/print-frame").then((m) => m.printReport());
+  const handlePrint = () => void printReport();
   const handlePdf = () => {
-    void import("@/lib/print-frame").then((m) => m.printReport());
+    void printReport();
     toast.success(lang === "ar" ? "اختر «حفظ كملف PDF» من نافذة الطباعة" : "Choose “Save as PDF” in the print window");
   };
 
