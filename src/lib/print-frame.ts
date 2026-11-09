@@ -14,6 +14,23 @@ export function openPrintWindow(): Window | null {
   try { return window.open("", "_blank"); } catch { return null; }
 }
 
+/** Same-origin CSS as text, with `@media print` blocks turned into always-on rules (for the on-screen print tab). */
+function cssForScreen(): string {
+  const out: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    let rules: CSSRuleList;
+    try { rules = sheet.cssRules; } catch { continue; } // cross-origin (fonts): linked separately
+    for (const r of Array.from(rules)) {
+      if (r instanceof CSSMediaRule && /print/.test(r.conditionText || r.media.mediaText)) {
+        const inner = Array.from(r.cssRules).filter((x) => !(x instanceof CSSPageRule)).map((x) => x.cssText).join("\n");
+        out.push(`@media all {${inner}}`);
+        for (const x of Array.from(r.cssRules)) if (x instanceof CSSPageRule) out.push(x.cssText); // paper size, margins, page numbers
+      } else out.push(r.cssText);
+    }
+  }
+  return out.join("\n");
+}
+
 export async function printReport(popup: Window | null = openPrintWindow()): Promise<void> {
   const root = document.querySelector<HTMLElement>(".print-root");
   if (!root) { popup?.close(); window.print(); return; }
@@ -35,7 +52,17 @@ export async function printReport(popup: Window | null = openPrintWindow()): Pro
     try {
       const d = popup.document;
       d.open();
-      d.write(html.replace("</head>", `<style>@media screen{.print-root{display:block!important;width:auto!important;max-width:170mm;margin:0 auto!important;padding:12px}.pbar{position:sticky;top:0;background:#0f172a;padding:10px;text-align:center}.pbar button{font:700 16px Tahoma,Arial;padding:10px 22px;border-radius:10px;border:0;background:#fff}}</style></head>`).replace("<body", "<body").replace(/(<body[^>]*>)/, `$1<div class="pbar"><button type="button">طباعة / حفظ PDF</button></div>`));
+      const fonts = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).filter((l) => { try { return !(l as HTMLLinkElement).sheet?.cssRules; } catch { return true; } }).map((l) => `<link rel="stylesheet" href="${(l as HTMLLinkElement).href}">`).join("");
+      const tab =
+        `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=794">` +
+        `<title>${document.title.replace(/</g, "&lt;")}</title>${fonts}<style>${cssForScreen()}</style>` +
+        `<style>html,body{background:#E2E8F0!important;min-width:0!important}` +
+        `html body .pbar.pbar{display:block!important;position:sticky;top:0;z-index:9;background:#0F172A;padding:10px;text-align:center}` +
+        `.pbar button{font:700 16px Tahoma,Arial;padding:10px 22px;border-radius:10px;border:0;background:#fff;cursor:pointer}` +
+        `@media screen{.print-root{background:#fff!important;padding:14mm!important;margin:12px auto!important;box-shadow:0 2px 14px rgba(15,23,42,.18);box-sizing:content-box!important}}` +
+        `@media print{html body .pbar.pbar{display:none!important}.print-root{padding:0!important;margin:0 auto!important;box-shadow:none!important}}</style></head>` +
+        `<body><div class="pbar"><button type="button">طباعة / حفظ PDF</button></div>${root.outerHTML}</body></html>`;
+      d.write(tab);
       d.close();
       // Wired from here (not an inline onclick) so a page CSP cannot block it.
       d.querySelector(".pbar button")?.addEventListener("click", () => popup.print());

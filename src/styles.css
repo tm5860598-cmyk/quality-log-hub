@@ -852,8 +852,17 @@
     break-before: auto !important;
     page-break-before: auto !important;
   }
-  .print-root .md-body h2 { font-size: 12.5pt !important; margin: 10pt 0 4pt !important; }
-  .print-root .md-body h3 { font-size: 11.5pt !important; margin: 8pt 0 3pt !important; }
+  .print-root .md-body h2 { font-size: 15pt !important; font-weight: 800 !important; color: #0F2A47 !important; margin: 12pt 0 5pt !important; padding-bottom: 2pt; border-bottom: 1pt solid #CBD5E1; }
+  .print-root .md-body h3 { font-size: 13pt !important; font-weight: 800 !important; color: #1E3A5F !important; margin: 10pt 0 4pt !important; }
+  .print-root .md-body h4 { font-size: 11.5pt !important; font-weight: 700 !important; color: #1E293B !important; margin: 8pt 0 3pt !important; }
+  .print-root .md-body p, .print-root .md-body li { font-size: 10pt !important; }
+  /* Labelled lists printed as 2-column tables */
+  .print-root .md-kv { width: 100% !important; border-collapse: collapse !important; margin: 6pt 0 !important; border: 0.75pt solid #64748B !important; font-size: 9.5pt !important; }
+  .print-root .md-kv th { width: 30%; background: #E2E8F0 !important; color: #0F172A !important; font-weight: 800; text-align: start; vertical-align: top; }
+  .print-root .md-kv td { vertical-align: top; }
+  .print-root .md-kv td.md-kv-n { width: 6%; text-align: center; font-weight: 800; background: #F1F5F9 !important; }
+  .print-root .md-kv th, .print-root .md-kv td { padding: 3pt 6pt !important; border: 0.5pt solid #94A3B8 !important; }
+  .print-root .md-kv p, .print-root .md-kv li { margin: 0 !important; }
   .print-root .md-body ul { list-style: disc; padding-inline-start: 16pt; }
   .print-root .md-body ol { list-style: decimal; padding-inline-start: 16pt; }
   .print-root .md-body li { margin: 1pt 0; }

@@ -265,7 +265,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
                       <span className="print-chip is-answer">الإجابة</span>
                       <span className="print-time">{fmtDateTime(timeOf(a.id))}</span>
                     </div>
-                    <MarkdownView cards>{getText(a)}</MarkdownView>
+                    <MarkdownView cards structured>{getText(a)}</MarkdownView>
                   </div>
                 ))}
               </div>
