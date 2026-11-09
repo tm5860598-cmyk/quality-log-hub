@@ -294,9 +294,9 @@ function AppScreen({
     else { toast.success(t.reportDeleted); if (editingId === id) resetForm(); loadReports(); }
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => void import("@/lib/print-frame").then((m) => m.printReport());
   const handlePdf = () => {
-    window.print();
+    void import("@/lib/print-frame").then((m) => m.printReport());
     toast.success(lang === "ar" ? "اختر «حفظ كملف PDF» من نافذة الطباعة" : "Choose “Save as PDF” in the print window");
   };
 

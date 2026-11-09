@@ -167,9 +167,8 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     // Let the print layout mount, then wait for fonts and the company logo.
     await new Promise((r) => setTimeout(r, 450));
     try { await document.fonts?.ready; } catch { /* ignore */ }
-    const images = Array.from(document.querySelectorAll<HTMLImageElement>(".print-root img"));
-    await Promise.all(images.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }))));
-    window.print();
+    const { printReport } = await import("@/lib/print-frame");
+    await printReport(); // prints a frozen copy, so resetting the scope afterwards is safe
     setPrintIds(null);
   }, []);
 
