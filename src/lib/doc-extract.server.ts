@@ -1,4 +1,5 @@
-export type ExtractedPage = { page: number; text: string };
+import type { ExtractedPage } from "./doc-chunk";
+export type { ExtractedPage };
 
 const clean = (s: string) => s.replace(/\u0000/g, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
 
@@ -60,23 +61,4 @@ export async function extractPages(fileName: string, bytes: Uint8Array): Promise
   throw new Error("صيغة غير مدعومة. ارفع PDF أو DOCX أو TXT");
 }
 
-/** Split pages into ~1200-char chunks, keeping the source page number. */
-export function chunkPages(pages: ExtractedPage[]): Array<{ page: number; text: string }> {
-  const out: Array<{ page: number; text: string }> = [];
-  for (const p of pages) {
-    const words = p.text.split(/\s+/);
-    let buf: string[] = [];
-    let len = 0;
-    for (const w of words) {
-      buf.push(w);
-      len += w.length + 1;
-      if (len >= 1200) {
-        out.push({ page: p.page, text: buf.join(" ") });
-        buf = buf.slice(-30);
-        len = buf.join(" ").length;
-      }
-    }
-    if (buf.length && buf.join(" ").trim().length > 40) out.push({ page: p.page, text: buf.join(" ") });
-  }
-  return out;
-}
+export { chunkPages } from "./doc-chunk";

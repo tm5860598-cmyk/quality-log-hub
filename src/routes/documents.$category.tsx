@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { processDocument } from "@/lib/documents.functions";
+import { ingestChunks, processDocument } from "@/lib/documents.functions";
+import { LOCAL_EXT, SERVER_EXT, extractPagesLocal } from "@/lib/doc-client-extract";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import { useDeptPermissions } from "@/lib/permissions";
 const MAX_SIZE = 40 * 1024 * 1024;
 const ACCEPT = ".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif";
 /** Types whose text can be extracted into the AI knowledge base. */
-const ANALYZABLE = ["pdf", "docx", "txt", "md", "csv"];
+const ANALYZABLE = LOCAL_EXT; // anything the server or the browser (OCR, Excel, PowerPoint, images…) can read
 
 const FILE_ICONS: Record<string, string> = {
   pdf: "📕", doc: "📘", docx: "📘", txt: "📄", md: "📄", csv: "📊",
@@ -99,21 +100,55 @@ function DocumentsPage() {
     if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ""));
   };
 
+  /** Browser-side analysis: local extraction (OCR for scans, Excel, PowerPoint, images…) then slice-by-slice ingestion. */
+  async function analyzeLocally(docId: string, label: string) {
+    const { data: row, error } = await supabase.from("documents").select("file_name, storage_path").eq("id", docId).maybeSingle();
+    if (error || !row) throw new Error("المستند غير موجود");
+    setProgress(`${label}... تنزيل الملف`);
+    const dl = await supabase.storage.from("department-docs").download(row.storage_path);
+    if (dl.error || !dl.data) throw new Error("تعذر تحميل الملف من التخزين");
+    const file = new File([dl.data], row.file_name, { type: dl.data.type });
+    const pages = await extractPagesLocal(file, (pct, what) => setProgress(`${label}... ${what} (${Math.round(pct)}%)`));
+    if (!pages.length) throw new Error("لم يُعثر على أي نص في الملف حتى بعد التعرف الضوئي (OCR) — قد تكون الصورة غير واضحة");
+    const { chunkPages } = await import("@/lib/doc-chunk");
+    const chunks = chunkPages(pages);
+    const pageCount = new Set(pages.map((p) => p.page)).size;
+    const SLICE = 30;
+    for (let off = 0; off < chunks.length || off === 0; off += SLICE) {
+      const r = await ingestChunks({ data: { documentId: docId, offset: off, total: chunks.length, pageCount, chunks: chunks.slice(off, off + SLICE) } });
+      setProgress(`${label}... حفظ ${Math.min(r.nextOffset, chunks.length)}/${chunks.length}`);
+      if (r.done) break;
+    }
+  }
+
   /** Analysis pass — resumable, never deletes the stored file on failure. */
   async function analyze(docId: string, label = "تحليل المحتوى") {
     setBusyId(docId);
     try {
-      let offset = 0;
-      for (let guard = 0; guard < 200; guard++) {
-        const r = await processDocument({ data: { documentId: docId, offset } });
-        setProgress(`${label}... ${Math.min(r.nextOffset, r.total)}/${r.total}`);
-        offset = r.nextOffset;
-        if (r.done) break;
+      const { data: row } = await supabase.from("documents").select("file_name").eq("id", docId).maybeSingle();
+      const extn = ext(row?.file_name ?? "");
+      let done = false;
+      if (SERVER_EXT.includes(extn)) {
+        try {
+          let offset = 0;
+          for (let guard = 0; guard < 200; guard++) {
+            const r = await processDocument({ data: { documentId: docId, offset } });
+            setProgress(`${label}... ${Math.min(r.nextOffset, r.total)}/${r.total}`);
+            offset = r.nextOffset;
+            if (r.done) break;
+          }
+          done = true;
+        } catch {
+          toast.info("تعذّر استخراج النص على الخادم — جاري القراءة داخل جهازك (OCR)، قد يستغرق ذلك وقتًا");
+        }
       }
+      if (!done) await analyzeLocally(docId, label);
       toast.success("تم تحليل المستند وإضافته لقاعدة معرفة القسم");
       return true;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "فشل تحليل المستند — الملف محفوظ ويمكنك إعادة المحاولة");
+      const msg = e instanceof Error ? e.message : "فشل تحليل المستند — الملف محفوظ ويمكنك إعادة المحاولة";
+      await supabase.from("documents").update({ status: "failed", error_message: msg }).eq("id", docId);
+      toast.error(msg);
       return false;
     } finally {
       setBusyId(null);
