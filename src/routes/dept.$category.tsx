@@ -86,38 +86,38 @@ function DeptPage() {
   return (
     <div dir="rtl" className="dash-scope dash-dots min-h-screen p-4 text-right md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-slate-300 transition-colors hover:text-white">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
           <ArrowRight className="size-4" /> الرئيسية
         </Link>
 
-        <section className={`relative overflow-hidden rounded-2xl border bg-white/[0.06] p-4 shadow-lg backdrop-blur-xl sm:p-5 ${accent}`}>
+        <section className={`relative overflow-hidden rounded-2xl border bg-card p-4 shadow-sm sm:p-5 ${accent}`}>
           <div className={`absolute inset-y-0 right-0 w-1 bg-gradient-to-b ${dept.gradient}`} />
           <div className="flex items-center gap-4">
             <div className={`grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${dept.gradient} text-2xl shadow-lg sm:size-14`}>
               {dept.emoji}
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-extrabold text-white sm:text-2xl">{dept.title_ar}</h1>
-              <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-300">{dept.desc_ar}</p>
+              <h1 className="text-xl font-extrabold text-foreground sm:text-2xl">{dept.title_ar}</h1>
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{dept.desc_ar}</p>
             </div>
           </div>
         </section>
 
-        <section aria-label="إحصائيات القسم" className="grid grid-cols-3 divide-x divide-x-reverse divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl">
+        <section aria-label="إحصائيات القسم" className="grid grid-cols-3 divide-x divide-x-reverse divide-border overflow-hidden rounded-2xl border bg-card shadow-sm">
           <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
-            <div className="text-lg font-extrabold text-white sm:text-xl">{stats.products}</div>
-            <div className="mt-1 text-xs text-slate-400 sm:text-sm">عدد المنتجات</div>
+            <div className="text-lg font-extrabold text-foreground sm:text-xl">{stats.products}</div>
+            <div className="mt-1 text-xs text-muted-foreground sm:text-sm">عدد المنتجات</div>
           </div>
           <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
-            <div className="text-lg font-extrabold text-white sm:text-xl">{stats.documents}</div>
-            <div className="mt-1 text-xs text-slate-400 sm:text-sm">عدد المستندات</div>
+            <div className="text-lg font-extrabold text-foreground sm:text-xl">{stats.documents}</div>
+            <div className="mt-1 text-xs text-muted-foreground sm:text-sm">عدد المستندات</div>
           </div>
           <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
-            <div className="flex min-h-7 items-center justify-center gap-1.5 text-sm font-bold text-white sm:text-base">
-              <Clock className="size-3.5 shrink-0 text-slate-400" />
+            <div className="flex min-h-7 items-center justify-center gap-1.5 text-sm font-bold text-foreground sm:text-base">
+              <Clock className="size-3.5 shrink-0 text-muted-foreground" />
               <span>{stats.updated || "—"}</span>
             </div>
-            <div className="mt-1 text-xs text-slate-400 sm:text-sm">آخر تحديث</div>
+            <div className="mt-1 text-xs text-muted-foreground sm:text-sm">آخر تحديث</div>
           </div>
         </section>
 
@@ -128,19 +128,19 @@ function DeptPage() {
               to={c.to}
               params={c.params as never}
               search={c.search as never}
-              className={`group relative flex min-h-52 flex-col overflow-hidden rounded-2xl border bg-white/[0.06] p-5 shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.09] ${accent}`}
+              className={`group relative flex min-h-52 flex-col overflow-hidden rounded-2xl border bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-muted/40 hover:shadow-md ${accent}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className={`grid size-12 place-items-center rounded-xl bg-gradient-to-br ${dept.gradient} text-2xl text-white shadow-lg transition-transform duration-300 group-hover:rotate-[10deg]`}>
                   {c.emoji}
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                   <CheckCircle2 className="size-3.5" /> مفعل
                 </span>
               </div>
-              <h2 className="mt-4 text-lg font-extrabold text-white">{c.title}</h2>
-              <p className="mt-1 flex-1 text-sm leading-6 text-slate-300">{c.desc}</p>
-              <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg border border-white/15 bg-white/[0.07] px-3.5 py-2 text-sm font-bold text-white transition-colors group-hover:border-white/30 group-hover:bg-white/[0.12]">
+              <h2 className="mt-4 text-lg font-extrabold text-foreground">{c.title}</h2>
+              <p className="mt-1 flex-1 text-sm leading-6 text-muted-foreground">{c.desc}</p>
+              <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg border bg-primary px-3.5 py-2 text-sm font-bold text-primary-foreground transition-colors group-hover:bg-primary/90">
                 فتح <ArrowRight className="size-4 transition-transform group-hover:-translate-x-1" />
               </span>
             </Link>
