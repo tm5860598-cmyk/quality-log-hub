@@ -408,7 +408,7 @@ function UsersSection({ callerRole }: { callerRole: string }) {
   const roleChoices = callerRole === "owner" ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => r.value !== "admin");
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
       <div className="rounded-2xl bg-card border shadow-sm p-5">
         <h2 className="font-bold flex items-center gap-2 mb-4"><UserPlus className="h-4 w-4" /> إضافة مستخدم</h2>
         <form onSubmit={addUser} className="space-y-3">
@@ -435,14 +435,14 @@ function UsersSection({ callerRole }: { callerRole: string }) {
         <div className="space-y-2">
           {users.map((u) => (
             <div key={u.id} className="rounded-lg border p-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{u.username}</div>
                   <div className="text-xs text-muted-foreground truncate">
                     {u.job_title || "—"} · {roleLabel(u.role)}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex flex-wrap items-center gap-1">
                   <Button size="sm" variant="outline" disabled={locked(u)} onClick={() => startEdit(u)}>تعديل</Button>
                   <Button size="sm" variant="ghost" className="text-destructive"
                     disabled={busy || u.role === "owner" || locked(u)} onClick={() => removeUser(u)}>
@@ -635,7 +635,7 @@ function DepartmentsSection() {
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("تم إضافة القسم بكل مكوناته (منتجات · مستندات · دردشة · تصنيع)");
+    toast.success("تم إضافة القسم بكل مكوناته (منتجات · مستندات · دردشة)");
     setForm({ key: "", title_ar: "", title_en: "", desc_ar: "", desc_en: "", emoji: "🏭", gradient: GRADIENT_CHOICES[0] });
     await reload();
   };
@@ -679,12 +679,12 @@ function DepartmentsSection() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
       <div className="rounded-2xl bg-card border shadow-sm p-5">
         <h2 className="font-bold flex items-center gap-2 mb-1"><Plus className="h-4 w-4" /> إضافة قسم جديد</h2>
         <p className="text-xs text-muted-foreground mb-4">
           أي قسم جديد يظهر فورًا في الرئيسية ويحصل تلقائيًا على نفس الهيكل: المنتجات والحاسبة، المستندات، الدردشة الذكية،
-          محرك التصنيع، ومصفوفة الصلاحيات.
+          ومصفوفة الصلاحيات.
         </p>
         <form onSubmit={add} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -720,7 +720,7 @@ function DepartmentsSection() {
         <div className="space-y-2">
           {departments.map((d) => (
             <div key={d.key} className="rounded-lg border p-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${d.gradient} text-lg text-white`}>{d.emoji}</span>
                   <div className="min-w-0">
@@ -730,7 +730,7 @@ function DepartmentsSection() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex flex-wrap items-center gap-1">
                   <Button size="sm" variant="outline" onClick={() => setEditing(d)}>تعديل</Button>
                   <Button size="sm" variant="ghost" onClick={() => toggleActive(d)}>
                     {d.is_active === false ? "إظهار" : "إخفاء"}
