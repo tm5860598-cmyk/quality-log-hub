@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { UserAvatar } from "@/components/UserAvatar";
+import { DEFAULT_PROJECT_NAME, useProfilePrefs } from "@/lib/profile-prefs";
 import { printReport } from "@/lib/print-frame";
 import { Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type FormEvent } from "react";
@@ -610,6 +612,7 @@ function Dashboard({
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const { can } = useDeptPermissions();
   const { departments } = useWorkspaceDepartments();
+  const prefs = useProfilePrefs();
   const { signOut } = useAuth();
   const [docs, setDocs] = useState<DashDoc[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -693,9 +696,10 @@ function Dashboard({
             <div className="flex min-w-0 items-center gap-3">
               <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/20 text-2xl shadow-inner">✦</div>
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-extrabold text-white md:text-xl">{t("مشروعي المفضل", "My Favourite Project")}</h1>
-                <p className="truncate text-xs text-white/75">
-                  {t("أهلاً بك يا مهندس", "Welcome, Engineer")} {username || (lang === "ar" ? "طارق" : "Tarek")} 👋
+                <h1 className="truncate text-lg font-extrabold text-white md:text-xl">{prefs.projectName || t(DEFAULT_PROJECT_NAME.ar, DEFAULT_PROJECT_NAME.en)}</h1>
+                <p className="flex items-center gap-1.5 truncate text-xs text-white/75">
+                  <UserAvatar name={username} className="size-5" textClass="text-[10px]" />
+                  <span className="truncate">{t("أهلاً بك يا مهندس", "Welcome, Engineer")} {username || (lang === "ar" ? "طارق" : "Tarek")} 👋</span>
                 </p>
               </div>
             </div>
@@ -742,15 +746,18 @@ function Dashboard({
                 <button
                   onClick={() => { setMenuOpen(!menuOpen); setBellOpen(false); }}
                   aria-label={t("حسابي", "My account")}
-                  className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-sm font-extrabold text-white shadow-lg"
+                  className="rounded-full ring-2 ring-white/30 transition hover:ring-white/60"
                 >
-                  {(username || "ط").slice(0, 1).toUpperCase()}
+                  <UserAvatar name={username} className="size-10" />
                 </button>
                 {menuOpen && (
                   <div className="absolute end-0 top-12 z-50 w-56 rounded-2xl border border-[var(--dash-border)] bg-popover text-popover-foreground p-2 shadow-2xl">
-                    <div className="px-3 py-2">
-                      <div className="truncate text-sm font-bold">{username}</div>
-                      <div className="text-xs text-[var(--dash-muted)]">{t("مسجل الدخول", "Signed in")}</div>
+                    <div className="flex items-center gap-3 px-3 py-2">
+                      <UserAvatar name={username} className="size-10" />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold">{username}</div>
+                        <div className="text-xs text-[var(--dash-muted)]">{t("مسجل الدخول", "Signed in")}</div>
+                      </div>
                     </div>
                     <Link to="/settings" onClick={closeMenus} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-muted">
                       <SettingsIcon className="size-4" /> {t("الإعدادات", "Settings")}

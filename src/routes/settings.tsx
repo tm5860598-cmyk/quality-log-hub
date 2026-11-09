@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, LayoutGrid, Plus, Printer, Upload, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, Palette, Users, ShieldCheck, UserPlus, Trash2, Save, LayoutGrid, Plus, Printer, Upload, Image as ImageIcon, UserCircle } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
+import { DEFAULT_PROJECT_NAME, removeAvatar, saveAvatar, saveProjectName, useProfilePrefs } from "@/lib/profile-prefs";
 import { useDepartments, type Department } from "@/lib/departments";
 import { ROLE_OPTIONS, roleLabel } from "@/lib/roles";
 import { applyTheme, readTheme, THEMES, type ThemeMode } from "@/lib/theme";
@@ -15,13 +17,13 @@ import { MANAGER_ROLES } from "@/lib/permissions";
 import { createAppUser, updateAppUser, deleteAppUser, setDeptPermissions } from "@/lib/users.functions";
 import { clearReportSettingsCache, resolveReportLogo, uploadReportLogo, useReportSettings, type ReportSettings } from "@/lib/report-settings";
 
-type SettingsTab = "theme" | "users" | "perms" | "depts" | "printing";
+type SettingsTab = "account" | "theme" | "users" | "perms" | "depts" | "printing";
 
 export const Route = createFileRoute("/settings")({
   ssr: false,
   component: SettingsPage,
   validateSearch: (s: Record<string, unknown>): { tab?: SettingsTab } =>
-    s.tab === "theme" || s.tab === "users" || s.tab === "perms" || s.tab === "depts" || s.tab === "printing"
+    s.tab === "account" || s.tab === "theme" || s.tab === "users" || s.tab === "perms" || s.tab === "depts" || s.tab === "printing"
       ? { tab: s.tab }
       : {},
   head: () => ({
@@ -43,7 +45,7 @@ function SettingsPage() {
   const { status, role } = useAuth();
   const isManager = MANAGER_ROLES.includes(role);
   const { tab: tabParam } = Route.useSearch();
-  const [tab, setTab] = useState<SettingsTab>(tabParam ?? "theme");
+  const [tab, setTab] = useState<SettingsTab>(tabParam ?? "account");
   useEffect(() => { if (tabParam) setTab(tabParam); }, [tabParam]);
   const isOwner = role === "owner";
 
@@ -74,6 +76,7 @@ function SettingsPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <TabBtn active={tab === "account"} onClick={() => setTab("account")} icon={<UserCircle className="size-4" />}>حسابي والمشروع</TabBtn>
           <TabBtn active={tab === "theme"} onClick={() => setTab("theme")} icon={<Palette className="size-4" />}>المظهر</TabBtn>
           {isManager && (
             <>
@@ -87,11 +90,82 @@ function SettingsPage() {
           )}
         </div>
 
+        {tab === "account" && <AccountSection />}
         {tab === "theme" && <AppearanceSection />}
         {tab === "users" && isManager && <UsersSection callerRole={role} />}
         {tab === "perms" && isManager && <PermissionsSection callerRole={role} />}
         {tab === "depts" && isOwner && <DepartmentsSection />}
         {tab === "printing" && isManager && <ReportPrintingSection />}
+      </div>
+    </div>
+  );
+}
+
+function AccountSection() {
+  const { userId, username, session } = useAuth();
+  const prefs = useProfilePrefs();
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setName(prefs.projectName), [prefs.projectName]);
+
+  const saveName = async () => {
+    if (!userId) return;
+    setBusy(true);
+    try { await saveProjectName(userId, name); toast.success(name.trim() ? "تم تغيير اسم المشروع" : "تمت العودة للاسم الافتراضي"); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "تعذّر حفظ الاسم"); }
+    finally { setBusy(false); }
+  };
+  const pickPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !userId) return;
+    if (!file.type.startsWith("image/")) return toast.error("اختر ملف صورة");
+    if (file.size > 15 * 1024 * 1024) return toast.error("الحد الأقصى للصورة 15MB");
+    setBusy(true);
+    try {
+      const where = await saveAvatar(userId, file);
+      toast.success(where === "cloud" ? "تم حفظ صورتك" : "تم حفظ الصورة على هذا الجهاز فقط (لا تتوفر صلاحية رفعها لحسابك)");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "تعذّر حفظ الصورة"); }
+    finally { setBusy(false); }
+  };
+  const dropPhoto = async () => {
+    if (!userId) return;
+    setBusy(true);
+    try {
+      const path = (session?.user?.user_metadata as { avatar_path?: string | null } | undefined)?.avatar_path;
+      await removeAvatar(userId, path);
+      toast.success("تم حذف الصورة");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
+        <h2 className="font-bold flex items-center gap-2"><UserCircle className="size-4" /> صورتي</h2>
+        <div className="flex flex-wrap items-center gap-4">
+          <UserAvatar name={username} className="size-20" textClass="text-3xl" />
+          <div className="space-y-2">
+            <div className="text-lg font-bold">{username || "—"}</div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" disabled={busy}>
+                <label className="cursor-pointer"><Upload className="size-4" /> {prefs.hasAvatar ? "تغيير الصورة" : "إضافة صورة"}<input type="file" accept="image/*" className="hidden" onChange={pickPhoto} disabled={busy} /></label>
+              </Button>
+              {prefs.hasAvatar && <Button variant="ghost" onClick={dropPhoto} disabled={busy} className="text-destructive"><Trash2 className="size-4" /> حذف</Button>}
+            </div>
+            <p className="text-xs text-muted-foreground">تظهر بجانب اسمك في الصفحة الرئيسية وقائمة الحساب. تُقص تلقائيًا إلى مربع وتُصغَّر.</p>
+            {prefs.avatarIsLocal && <p className="text-xs text-amber-600">هذه الصورة محفوظة على هذا الجهاز فقط.</p>}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
+        <h2 className="font-bold flex items-center gap-2"><Palette className="size-4" /> اسم المشروع</h2>
+        <p className="text-sm text-muted-foreground">يظهر في ترويسة الصفحة الرئيسية. اتركه فارغًا للعودة إلى «{DEFAULT_PROJECT_NAME.ar}».</p>
+        <div className="flex max-w-xl flex-wrap gap-2">
+          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={DEFAULT_PROJECT_NAME.ar} className="min-w-0 flex-1" onKeyDown={(e) => { if (e.key === "Enter") void saveName(); }} />
+          <Button onClick={saveName} disabled={busy || name.trim() === prefs.projectName}><Save className="size-4" /> حفظ الاسم</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">الاسم والصورة مرتبطان بحسابك.</p>
       </div>
     </div>
   );
