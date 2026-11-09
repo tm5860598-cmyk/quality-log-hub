@@ -254,18 +254,18 @@
 
 /* --------------------- Dark navy dashboard --------------------- */
 .dash-scope {
-  --dash-bg: #0A0E27;
-  --dash-card: rgba(255, 255, 255, 0.06);
-  --dash-card-strong: rgba(255, 255, 255, 0.09);
-  --dash-border: rgba(255, 255, 255, 0.12);
-  --dash-text: #E2E8F0;
-  --dash-muted: #94A3B8;
+  /* Follows the app theme (light/dark) so the dashboards match every other page. */
+  --dash-bg: var(--background);
+  --dash-card: var(--card);
+  --dash-card-strong: var(--secondary);
+  --dash-border: var(--border);
+  --dash-text: var(--foreground);
+  --dash-muted: var(--muted-foreground);
   background-color: var(--dash-bg);
   color: var(--dash-text);
 }
-
 .dash-scope.dash-dots {
-  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.16) 1px, transparent 1.5px);
+  background-image: radial-gradient(circle, color-mix(in oklab, var(--muted-foreground) 14%, transparent) 1px, transparent 1.5px);
   background-size: 26px 26px;
 }
 

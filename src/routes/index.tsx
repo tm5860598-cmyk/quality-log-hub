@@ -107,11 +107,11 @@ function Index() {
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   if (status === "loading") {
-    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50">...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-background">...</div>;
   }
 
   return (
-    <div dir={dir} className="min-h-screen bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50">
+    <div dir={dir} className="min-h-screen bg-background">
       {status === "unauthenticated" ? (
         <AuthScreen lang={lang} setLang={setLang} t={t} />
       ) : (
@@ -158,9 +158,9 @@ function AuthScreen({ lang, setLang, t }: { lang: Lang; setLang: (l: Lang) => vo
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-8 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border bg-card p-8 shadow-xl">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-extrabold bg-gradient-to-r from-indigo-600 via-sky-600 to-emerald-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-extrabold text-foreground">
             {t.appName}
           </h1>
           <Button variant="ghost" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
@@ -171,14 +171,14 @@ function AuthScreen({ lang, setLang, t }: { lang: Lang; setLang: (l: Lang) => vo
           <div>
             <Label className="mb-1 block">{t.username}</Label>
             <Input value={u} onChange={(e) => setU(e.target.value)} required autoComplete="username" />
-            {mode === "signup" && <p className="text-xs text-slate-500 mt-1">{t.usernameHelp}</p>}
+            {mode === "signup" && <p className="text-xs text-muted-foreground mt-1">{t.usernameHelp}</p>}
           </div>
           <div>
             <Label className="mb-1 block">{t.password}</Label>
             <Input type="password" value={p} onChange={(e) => setP(e.target.value)} required autoComplete="current-password" />
-            {mode === "signup" && <p className="text-xs text-slate-500 mt-1">{t.passwordHelp}</p>}
+            {mode === "signup" && <p className="text-xs text-muted-foreground mt-1">{t.passwordHelp}</p>}
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-indigo-600 to-sky-600 text-white">
+          <Button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground">
             {mode === "login" ? <LogIn className="size-4" /> : <UserPlus className="size-4" />}
             {mode === "login" ? t.signIn : (lang === "ar" ? "إنشاء حساب المالك" : "Create Owner Account")}
           </Button>
@@ -186,7 +186,7 @@ function AuthScreen({ lang, setLang, t }: { lang: Lang; setLang: (l: Lang) => vo
         {firstUser && (
           <div className="mt-4 text-center">
             <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              className="text-sm text-indigo-600 hover:underline">
+              className="text-sm text-primary hover:underline">
               {mode === "login"
                 ? (lang === "ar" ? "أول مرة؟ أنشئ حساب المالك" : "First time? Create owner account")
                 : (lang === "ar" ? "لدي حساب بالفعل" : "I already have an account")}
@@ -311,12 +311,12 @@ function AppScreen({
         {tab !== "hub" && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-indigo-600 via-sky-600 to-emerald-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
               {t.appName}
             </h1>
-            <p className="text-sm text-slate-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {t.welcome}, <span className="font-semibold">{username}</span>{" "}
-              <span className="inline-block rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs">
+              <span className="inline-block rounded-full bg-secondary text-secondary-foreground px-2 py-0.5 text-xs">
                 {role === "owner" ? t.role_owner : t.role_user}
               </span>
             </p>
@@ -383,8 +383,8 @@ function TabBtn({
   return (
     <button onClick={onClick}
       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
-        active ? "bg-gradient-to-r from-indigo-600 to-sky-600 text-white shadow-md"
-               : "bg-white/70 text-slate-700 hover:bg-white border border-slate-200"
+        active ? "bg-primary text-primary-foreground shadow-md"
+               : "bg-card text-foreground hover:bg-muted border"
       }`}>
       {icon} {children}
     </button>
@@ -415,42 +415,42 @@ function EditorView(props: {
         </table>
       </PrintReport>
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
-        <Button variant="outline" onClick={addRow} className="border-emerald-200 bg-white/70 text-emerald-700">
+        <Button variant="outline" onClick={addRow} className="bg-card text-foreground">
           <Plus className="size-4" /> {t.add}
         </Button>
         <Button onClick={handleSave} disabled={saving}
-          className="bg-gradient-to-r from-indigo-600 to-sky-600 text-white">
+          className="bg-primary text-primary-foreground">
           <Save className="size-4" /> {t.save}
         </Button>
-        <Button onClick={handlePrint} className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white">
+        <Button onClick={handlePrint} className="border bg-card text-foreground hover:bg-muted">
           <Printer className="size-4" /> {t.print}
         </Button>
-        <Button onClick={handlePdf} className="bg-gradient-to-r from-rose-500 to-orange-500 text-white">
+        <Button onClick={handlePdf} className="border bg-card text-foreground hover:bg-muted">
           <FileDown className="size-4" /> {t.pdf}
         </Button>
       </div>
 
       <div ref={reportRef} dir={dir}
-        className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-6 shadow-xl print:border-0 print:p-2 print:shadow-none print:bg-white">
-        <div className="mb-4 grid gap-3 md:grid-cols-3 border-b border-indigo-100 pb-4">
+        className="rounded-2xl border border bg-card p-6 shadow-xl print:border-0 print:p-2 print:shadow-none print:bg-white">
+        <div className="mb-4 grid gap-3 md:grid-cols-3 border-b border-border pb-4">
           <div className="md:col-span-2">
-            <Label className="text-xs text-slate-600">{t.reportTitle} *</Label>
+            <Label className="text-xs text-muted-foreground">{t.reportTitle} *</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder={t.reportTitle} maxLength={200}
-              className="font-bold text-indigo-900 mt-1" />
+              className="font-bold text-primary mt-1" />
           </div>
           <div>
-            <Label className="text-xs text-slate-600">{t.date}</Label>
+            <Label className="text-xs text-muted-foreground">{t.date}</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1" />
           </div>
           <div className="md:col-span-3">
-            <Label className="text-xs text-slate-600">{t.reportDetails}</Label>
+            <Label className="text-xs text-muted-foreground">{t.reportDetails}</Label>
             <Textarea value={details} onChange={(e) => setDetails(e.target.value)}
               maxLength={1000} rows={2} className="mt-1" />
           </div>
           {reportNumber && (
-            <div className="md:col-span-3 text-sm text-slate-600">
-              {t.reportNo}: <span className="font-bold text-indigo-700">#{reportNumber}</span>
+            <div className="md:col-span-3 text-sm text-muted-foreground">
+              {t.reportNo}: <span className="font-bold text-primary">#{reportNumber}</span>
             </div>
           )}
         </div>
@@ -458,40 +458,40 @@ function EditorView(props: {
         <div className="overflow-x-auto">
           <table className={`w-full border-collapse ${lang === "ar" ? "text-right" : "text-left"}`}>
             <thead>
-              <tr className="bg-gradient-to-r from-indigo-600 to-sky-600 text-white">
-                <th className="border border-indigo-300 p-2 text-sm font-semibold w-12">{t.num}</th>
-                <th className="border border-indigo-300 p-2 text-sm font-semibold">{t.problem}</th>
-                <th className="border border-indigo-300 p-2 text-sm font-semibold">{t.action}</th>
-                <th className="border border-indigo-300 p-2 text-sm font-semibold">{t.quality}</th>
-                <th className="border border-indigo-300 p-2 text-sm font-semibold">{t.production}</th>
-                <th className="border border-indigo-300 p-2 text-sm font-semibold w-16 print:hidden">{t.del}</th>
+              <tr className="bg-primary text-primary-foreground">
+                <th className="border border-border p-2 text-sm font-semibold w-12">{t.num}</th>
+                <th className="border border-border p-2 text-sm font-semibold">{t.problem}</th>
+                <th className="border border-border p-2 text-sm font-semibold">{t.action}</th>
+                <th className="border border-border p-2 text-sm font-semibold">{t.quality}</th>
+                <th className="border border-border p-2 text-sm font-semibold">{t.production}</th>
+                <th className="border border-border p-2 text-sm font-semibold w-16 print:hidden">{t.del}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, idx) => (
-                <tr key={row.id} className={idx % 2 === 0 ? "bg-white" : "bg-indigo-50/40"}>
-                  <td className="border border-indigo-100 p-2 text-center text-sm font-semibold text-indigo-700">{idx + 1}</td>
-                  <td className="border border-indigo-100 p-1">
+                <tr key={row.id} className={idx % 2 === 0 ? "bg-card" : "bg-muted/40"}>
+                  <td className="border border-border p-2 text-center text-sm font-semibold text-primary">{idx + 1}</td>
+                  <td className="border border-border p-1">
                     <Textarea value={row.problem} onChange={(e) => updateRow(row.id, "problem", e.target.value)}
                       rows={2} maxLength={500}
                       className="min-h-[60px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0" />
                   </td>
-                  <td className="border border-indigo-100 p-1">
+                  <td className="border border-border p-1">
                     <Textarea value={row.action} onChange={(e) => updateRow(row.id, "action", e.target.value)}
                       rows={2} maxLength={500}
                       className="min-h-[60px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0" />
                   </td>
-                  <td className="border border-indigo-100 p-1">
+                  <td className="border border-border p-1">
                     <Input value={row.qualitySign} onChange={(e) => updateRow(row.id, "qualitySign", e.target.value)}
                       maxLength={100}
                       className="border-0 bg-transparent shadow-none focus-visible:ring-0" />
                   </td>
-                  <td className="border border-indigo-100 p-1">
+                  <td className="border border-border p-1">
                     <Input value={row.productionSign} onChange={(e) => updateRow(row.id, "productionSign", e.target.value)}
                       maxLength={100}
                       className="border-0 bg-transparent shadow-none focus-visible:ring-0" />
                   </td>
-                  <td className="border border-indigo-100 p-2 text-center print:hidden">
+                  <td className="border border-border p-2 text-center print:hidden">
                     <button onClick={() => removeRow(row.id)}
                       className="text-rose-500 hover:text-rose-700 transition" aria-label={t.del}>
                       <Trash2 className="size-4 inline" />
@@ -512,7 +512,7 @@ function ReportsList({
 }: { t: typeof T["ar"]; reports: Report[]; onOpen: (r: Report) => void; onDelete: (id: string) => void }) {
   if (reports.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/60 bg-white/80 backdrop-blur p-10 text-center text-slate-500 shadow-xl">
+      <div className="rounded-2xl border border bg-card p-10 text-center text-muted-foreground shadow-xl">
         {t.noReports}
       </div>
     );
@@ -520,13 +520,13 @@ function ReportsList({
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {reports.map((r) => (
-        <div key={r.id} className="rounded-xl border border-white/60 bg-white/80 backdrop-blur p-4 shadow-md hover:shadow-lg transition">
+        <div key={r.id} className="rounded-xl border border bg-card p-4 shadow-md hover:shadow-lg transition">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-indigo-600 font-semibold">{t.reportNo} #{r.report_number}</div>
+              <div className="text-xs text-primary font-semibold">{t.reportNo} #{r.report_number}</div>
               <div className="font-bold text-slate-800 truncate">{r.title}</div>
-              {r.details && <div className="text-sm text-slate-600 mt-1 line-clamp-2">{r.details}</div>}
-              <div className="text-xs text-slate-500 mt-2">{r.report_date} · {r.rows.length} {t.problem}</div>
+              {r.details && <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{r.details}</div>}
+              <div className="text-xs text-muted-foreground mt-2">{r.report_date} · {r.rows.length} {t.problem}</div>
             </div>
             <div className="flex flex-col gap-1">
               <Button size="sm" variant="outline" onClick={() => onOpen(r)}>{t.open}</Button>
@@ -546,17 +546,17 @@ function ReportsList({
 /* ============================== Dashboard ============================== */
 
 const DASH_FILE_STYLE: Record<string, { label: string; cls: string }> = {
-  pdf: { label: "PDF", cls: "bg-rose-500/20 text-rose-300 border-rose-400/30" },
-  doc: { label: "DOC", cls: "bg-sky-500/20 text-sky-300 border-sky-400/30" },
-  docx: { label: "DOC", cls: "bg-sky-500/20 text-sky-300 border-sky-400/30" },
-  xls: { label: "XLS", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30" },
-  xlsx: { label: "XLS", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30" },
-  csv: { label: "CSV", cls: "bg-amber-500/20 text-amber-300 border-amber-400/30" },
-  ppt: { label: "PPT", cls: "bg-orange-500/20 text-orange-300 border-orange-400/30" },
-  pptx: { label: "PPT", cls: "bg-orange-500/20 text-orange-300 border-orange-400/30" },
+  pdf: { label: "PDF", cls: "bg-rose-500/20 text-rose-600 dark:text-rose-300 border-rose-500/30" },
+  doc: { label: "DOC", cls: "bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/30" },
+  docx: { label: "DOC", cls: "bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/30" },
+  xls: { label: "XLS", cls: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  xlsx: { label: "XLS", cls: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  csv: { label: "CSV", cls: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  ppt: { label: "PPT", cls: "bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30" },
+  pptx: { label: "PPT", cls: "bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30" },
 };
-const DASH_IMG_FILE = { label: "IMG", cls: "bg-violet-500/20 text-violet-300 border-violet-400/30" };
-const DASH_FALLBACK_FILE = { label: "FILE", cls: "bg-slate-500/20 text-slate-300 border-slate-400/30" };
+const DASH_IMG_FILE = { label: "IMG", cls: "bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-500/30" };
+const DASH_FALLBACK_FILE = { label: "FILE", cls: "bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30" };
 
 function dashFileMeta(name: string) {
   const e = name.split(".").pop()?.toLowerCase() ?? "";
@@ -664,12 +664,12 @@ function Dashboard({
       : cat.length > 0 ? t("جودة عالية", "High quality")
       : t("جديد", "New");
     const badgeCls = processing
-      ? "bg-amber-400/15 text-amber-300 border-amber-300/30"
+      ? "bg-amber-400/15 text-amber-700 dark:text-amber-300 border-amber-300/30"
       : failed
-        ? "bg-rose-400/15 text-rose-300 border-rose-300/30"
+        ? "bg-rose-400/15 text-rose-600 dark:text-rose-300 border-rose-300/30"
         : cat.length > 0
-          ? "bg-emerald-400/15 text-emerald-300 border-emerald-300/30"
-          : "bg-sky-400/15 text-sky-300 border-sky-300/30";
+          ? "bg-emerald-400/15 text-emerald-700 dark:text-emerald-300 border-emerald-300/30"
+          : "bg-sky-400/15 text-sky-700 dark:text-sky-300 border-sky-300/30";
     return { ...d, count: cat.length, badge, badgeCls };
   });
 
@@ -680,7 +680,7 @@ function Dashboard({
       )}
       <div className="relative mx-auto max-w-6xl space-y-6 pb-24">
         {/* ---------- Header ---------- */}
-        <header className="relative rounded-[20px] bg-gradient-to-l from-indigo-600 via-violet-600 to-blue-600 p-5 shadow-2xl">
+        <header className="relative rounded-[20px] bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900 p-5 shadow-2xl">
           <div
             className="absolute inset-0 rounded-[20px] opacity-20"
             style={{
@@ -709,7 +709,7 @@ function Dashboard({
                   <Bell className="size-5" />
                 </button>
                 {bellOpen && (
-                  <div className="absolute end-0 top-12 z-50 w-72 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-3 shadow-2xl">
+                  <div className="absolute end-0 top-12 z-50 w-72 rounded-2xl border border-[var(--dash-border)] bg-popover text-popover-foreground p-3 shadow-2xl">
                     <p className="mb-2 text-xs font-bold text-[var(--dash-muted)]">{t("آخر التحديثات", "Latest updates")}</p>
                     {docs.slice(0, 3).map((d) => (
                       <Link
@@ -717,7 +717,7 @@ function Dashboard({
                         to="/documents/$category"
                         params={{ category: d.category }}
                         onClick={() => setBellOpen(false)}
-                        className="block rounded-xl px-2 py-1.5 text-sm transition hover:bg-white/5"
+                        className="block rounded-xl px-2 py-1.5 text-sm transition hover:bg-muted"
                       >
                         <span className="block truncate">
                           {dashFileMeta(d.file_name).label} · {d.title}
@@ -742,28 +742,28 @@ function Dashboard({
                 <button
                   onClick={() => { setMenuOpen(!menuOpen); setBellOpen(false); }}
                   aria-label={t("حسابي", "My account")}
-                  className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-extrabold text-white shadow-lg"
+                  className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-sm font-extrabold text-white shadow-lg"
                 >
                   {(username || "ط").slice(0, 1).toUpperCase()}
                 </button>
                 {menuOpen && (
-                  <div className="absolute end-0 top-12 z-50 w-56 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-2 shadow-2xl">
+                  <div className="absolute end-0 top-12 z-50 w-56 rounded-2xl border border-[var(--dash-border)] bg-popover text-popover-foreground p-2 shadow-2xl">
                     <div className="px-3 py-2">
                       <div className="truncate text-sm font-bold">{username}</div>
                       <div className="text-xs text-[var(--dash-muted)]">{t("مسجل الدخول", "Signed in")}</div>
                     </div>
-                    <Link to="/settings" onClick={closeMenus} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+                    <Link to="/settings" onClick={closeMenus} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-muted">
                       <SettingsIcon className="size-4" /> {t("الإعدادات", "Settings")}
                     </Link>
                     <button
                       onClick={() => { closeMenus(); setLang(lang === "ar" ? "en" : "ar"); }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5"
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-muted"
                     >
                       <Languages className="size-4" /> {lang === "ar" ? "English" : "عربي"}
                     </button>
                     <button
                       onClick={() => { closeMenus(); void signOut(); }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-300 transition hover:bg-rose-500/10"
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-600 dark:text-rose-300 transition hover:bg-rose-500/10"
                     >
                       <LogOut className="size-4" /> {t("خروج", "Logout")}
                     </button>
@@ -776,7 +776,7 @@ function Dashboard({
 
         {/* ---------- Local search (project files only) ---------- */}
         <div className="relative z-10 mx-auto w-full max-w-2xl">
-          <div className="flex items-center gap-2 rounded-2xl border border-[var(--dash-border)] bg-[var(--dash-card)] px-4 py-3 backdrop-blur-xl focus-within:ring-2 focus-within:ring-violet-500/50">
+          <div className="flex items-center gap-2 rounded-2xl border border-[var(--dash-border)] bg-[var(--dash-card)] px-4 py-3 backdrop-blur-xl focus-within:ring-2 focus-within:ring-ring/50">
             <Search className="size-4 shrink-0 text-[var(--dash-muted)]" />
             <input
               value={q}
@@ -791,7 +791,7 @@ function Dashboard({
             )}
           </div>
           {results.length > 0 && (
-            <div className="absolute inset-x-0 top-16 z-30 space-y-1 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-2 shadow-2xl">
+            <div className="absolute inset-x-0 top-16 z-30 space-y-1 rounded-2xl border border-[var(--dash-border)] bg-popover text-popover-foreground p-2 shadow-2xl">
               {results.map((d) => {
                 const meta = dashFileMeta(d.file_name);
                 return (
@@ -799,7 +799,7 @@ function Dashboard({
                     key={d.id}
                     to="/documents/$category"
                     params={{ category: d.category }}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/5"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-muted"
                   >
                     <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold ${meta.cls}`}>{meta.label}</span>
                     <span className="min-w-0 flex-1">
@@ -820,11 +820,11 @@ function Dashboard({
 
         {/* ---------- Stats ---------- */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <DashStat icon={<Layers className="size-5" />} tone="text-sky-300 bg-sky-500/15"
+          <DashStat icon={<Layers className="size-5" />} tone="text-sky-700 dark:text-sky-300 bg-sky-500/15"
             value={String(visibleDepts.length)} label={t("عدد الأقسام", "Departments")} />
-          <DashStat icon={<Clock className="size-5" />} tone="text-amber-300 bg-amber-500/15"
+          <DashStat icon={<Clock className="size-5" />} tone="text-amber-700 dark:text-amber-300 bg-amber-500/15"
             value={lastUpdate ? dashRelTime(lastUpdate) : "—"} label={t("آخر تحديث", "Last update")} />
-          <DashStat icon={<FolderOpen className="size-5" />} tone="text-violet-300 bg-violet-500/15"
+          <DashStat icon={<FolderOpen className="size-5" />} tone="text-teal-700 dark:text-teal-300 bg-teal-500/15"
             value={loaded ? docs.length.toLocaleString("en-US") : "…"}
             label={t("إجمالي الملفات", "Total files")} />
         </div>
@@ -840,7 +840,7 @@ function Dashboard({
                   key={d.id}
                   to="/documents/$category"
                   params={{ category: d.category }}
-                  className="flex min-w-[230px] items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-3 backdrop-blur-xl transition hover:border-violet-400/40 hover:bg-[var(--dash-card-strong)]"
+                  className="flex min-w-[230px] items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-3 backdrop-blur-xl transition hover:border-primary/40 hover:bg-[var(--dash-card-strong)]"
                 >
                   <span className={`grid size-11 shrink-0 place-items-center rounded-xl border text-[11px] font-extrabold ${meta.cls}`}>{meta.label}</span>
                   <span className="min-w-0">
@@ -892,7 +892,7 @@ function Dashboard({
                 <h3 className="mt-3 font-extrabold text-lg leading-tight">{lang === "ar" ? tile.title_ar : tile.title_en}</h3>
                 <p className="mt-1 text-xs text-[var(--dash-muted)] line-clamp-2">{lang === "ar" ? tile.desc_ar : tile.desc_en}</p>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-sm font-bold text-violet-300">{dashFilesLabel(tile.count, lang)}</span>
+                  <span className="text-sm font-bold text-primary">{dashFilesLabel(tile.count, lang)}</span>
                   <span className="text-sm font-semibold text-[var(--dash-muted)]">{t("فتح", "Open")} ←</span>
                 </div>
               </motion.div>
@@ -911,16 +911,16 @@ function Dashboard({
         {/* ---------- Two small action pills ---------- */}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <div className="flex items-center gap-2 rounded-full border border-[var(--dash-border)] bg-[var(--dash-card)] px-3 py-2 backdrop-blur-xl">
-            <Film className="size-4 text-teal-300" />
+            <Film className="size-4 text-teal-600 dark:text-teal-300" />
             <span className="text-sm font-semibold">{t("أداة تحويل الملفات", "File converter")}</span>
-            <Link to="/convert" className="rounded-full bg-teal-500/90 px-3 py-1 text-xs font-bold text-white transition hover:bg-teal-400">
+            <Link to="/convert" className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground transition hover:bg-primary/90">
               {t("ابدأ التحويل", "Start")}
             </Link>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-[var(--dash-border)] bg-[var(--dash-card)] px-3 py-2 backdrop-blur-xl">
-            <Sparkles className="size-4 text-violet-300" />
+            <Sparkles className="size-4 text-primary" />
             <span className="text-sm font-semibold">{t("اسأل مساعد المشروع", "Ask project assistant")} ✦</span>
-            <Link to="/chat" className="rounded-full bg-violet-500/90 px-3 py-1 text-xs font-bold text-white transition hover:bg-violet-400">
+            <Link to="/chat" className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground transition hover:bg-primary/90">
               {t("ابدأ الآن", "Start")}
             </Link>
           </div>
@@ -929,17 +929,17 @@ function Dashboard({
 
       {/* ---------- Floating + button ---------- */}
       {fabOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-52 rounded-2xl border border-[var(--dash-border)] bg-[#111735] p-2 shadow-2xl">
-          <Link to="/" search={{ view: "editor" as const }} onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+        <div className="fixed bottom-24 right-6 z-50 w-52 rounded-2xl border border-[var(--dash-border)] bg-popover text-popover-foreground p-2 shadow-2xl">
+          <Link to="/" search={{ view: "editor" as const }} onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-muted">
             <FileText className="size-4" /> {t("تقرير جديد", "New report")}
           </Link>
-          <Link to="/chat" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+          <Link to="/chat" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-muted">
             <MessageCircle className="size-4" /> {t("محادثة جديدة", "New chat")}
           </Link>
-          <Link to="/convert" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+          <Link to="/convert" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-muted">
             <Film className="size-4" /> {t("تحويل ملفات", "Convert files")}
           </Link>
-          <Link to="/settings" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white/5">
+          <Link to="/settings" onClick={() => setFabOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-muted">
             <SettingsIcon className="size-4" /> {t("الإعدادات", "Settings")}
           </Link>
         </div>
@@ -947,7 +947,7 @@ function Dashboard({
       <button
         onClick={() => setFabOpen(!fabOpen)}
         aria-label={t("إضافة", "Add")}
-        className="fixed bottom-6 right-6 z-50 grid size-14 place-items-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-[0_10px_40px_-10px_rgba(139,92,246,0.9)] transition hover:scale-105"
+        className="fixed bottom-6 right-6 z-50 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition hover:scale-105"
       >
         <Plus className={`size-7 transition-transform duration-300 ${fabOpen ? "rotate-45" : ""}`} />
       </button>
@@ -973,7 +973,7 @@ function DashFilter({ active, onClick, children }: { active: boolean; onClick: (
       onClick={onClick}
       className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
         active
-          ? "bg-gradient-to-l from-violet-600 to-fuchsia-600 text-white shadow-lg"
+          ? "bg-primary text-primary-foreground shadow"
           : "border border-[var(--dash-border)] bg-[var(--dash-card)] text-[var(--dash-muted)] hover:text-[var(--dash-text)]"
       }`}
     >
