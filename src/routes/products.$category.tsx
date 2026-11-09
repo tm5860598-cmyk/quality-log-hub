@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { printReport } from "@/lib/print-frame";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartment } from "@/lib/departments";
@@ -366,7 +367,7 @@ function ProductDetail({
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => void import("@/lib/print-frame").then((m) => m.printReport())}>
+          <Button variant="outline" size="sm" onClick={() => void printReport()}>
             <Printer className="size-4" /> طباعة كتقرير
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowQr(true)}>

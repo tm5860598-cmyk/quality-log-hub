@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Send, Loader2, Printer, Menu, CheckCheck } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
 import { PrintReport } from "@/components/PrintReport";
+import { openPrintWindow, printReport } from "@/lib/print-frame";
 import { useCategoryLabel, useDepartment } from "@/lib/departments";
 import { toast } from "sonner";
 
@@ -163,13 +164,13 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
   const runPrint = useCallback(async (ids: Set<string> | null) => {
     if (latest.current.busy) { toast.info("انتظر حتى تنتهي الإجابة ثم اطبع"); return; }
     if (latest.current.count === 0) { toast.info("لا توجد رسائل للطباعة في هذه المحادثة"); return; }
+    const popup = openPrintWindow(); // phones: needs the click gesture, so before any wait
     setPrintIds(ids);
     // Let the print layout mount, then wait for fonts and the company logo.
     await new Promise((r) => setTimeout(r, 450));
     try { await document.fonts?.ready; } catch { /* ignore */ }
-    const { printReport } = await import("@/lib/print-frame");
-    await printReport(); // prints a frozen copy, so resetting the scope afterwards is safe
-    setPrintIds(null);
+    await printReport(popup);
+    // Keep the chosen scope: some browsers still print the page itself after this returns.
   }, []);
 
   // Opened from the conversation list with ?print=1 → print once, then clean the URL.
