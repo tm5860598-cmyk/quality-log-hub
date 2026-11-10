@@ -48,29 +48,26 @@ export async function printReport(popup: Window | null = openPrintWindow()): Pro
     `<body style="margin:0;background:#fff">${root.outerHTML}</body></html>`;
 
   // Phones: iOS/Android print the top document and ignore iframes, so use a dedicated tab with an A4 viewport.
+  // The tab is a real blob: document (not about:blank + document.write): Safari/in-app browsers only honour
+  // window.print() reliably on a normally loaded page, and the page's own script owns the button.
   if (popup && !popup.closed) {
     try {
-      const d = popup.document;
-      d.open();
       const fonts = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).filter((l) => { try { return !(l as HTMLLinkElement).sheet?.cssRules; } catch { return true; } }).map((l) => `<link rel="stylesheet" href="${(l as HTMLLinkElement).href}">`).join("");
       const tab =
         `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=794">` +
+        `<base href="${location.origin}/">` +
         `<title>${document.title.replace(/</g, "&lt;")}</title>${fonts}<style>${cssForScreen()}</style>` +
         `<style>html,body{background:#E2E8F0!important;min-width:0!important}` +
         `html body .pbar.pbar{display:block!important;position:sticky;top:0;z-index:9;background:#0F172A;padding:10px;text-align:center}` +
         `.pbar button{font:700 16px Tahoma,Arial;padding:10px 22px;border-radius:10px;border:0;background:#fff;cursor:pointer}` +
         `@media screen{.print-root{background:#fff!important;padding:14mm!important;margin:12px auto!important;box-shadow:0 2px 14px rgba(15,23,42,.18);box-sizing:content-box!important}}` +
         `@media print{html body .pbar.pbar{display:none!important}.print-root{padding:0!important;margin:0 auto!important;box-shadow:none!important}}</style></head>` +
-        `<body><div class="pbar"><button type="button">طباعة / حفظ PDF</button></div>${root.outerHTML}</body></html>`;
-      d.write(tab);
-      d.close();
-      // Wired from here (not an inline onclick) so a page CSP cannot block it.
-      d.querySelector(".pbar button")?.addEventListener("click", () => popup.print());
-      await new Promise((r) => setTimeout(r, 700));
-      try { await d.fonts?.ready; } catch { /* ignore */ }
-      await Promise.all(Array.from(d.images).map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }))));
-      popup.focus();
-      popup.print();
+        `<body><div class="pbar"><button type="button" id="pbtn">طباعة / حفظ PDF</button></div>${root.outerHTML}` +
+        `<script>document.getElementById("pbtn").addEventListener("click",function(){window.print()});` +
+        `window.addEventListener("load",function(){setTimeout(function(){try{window.print()}catch(e){}},900)});</script></body></html>`;
+      const url = URL.createObjectURL(new Blob([tab], { type: "text/html;charset=utf-8" }));
+      popup.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 30 * 60 * 1000);
       return;
     } catch { try { popup.close(); } catch { /* ignore */ } }
   }
