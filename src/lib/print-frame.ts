@@ -54,8 +54,16 @@ export async function printReport(_popup: Window | null = null): Promise<void> {
           });
           return;
         }
-      } else toast.dismiss(id);
-    } catch { /* fall through to plain print */ }
+      } else {
+        toast.error("المتصفح لا يدعم مشاركة الملفات — افتح الموقع من Safari ثم جرّب «حفظ PDF»", { id, duration: 15000 });
+        return;
+      }
+    } catch (e) {
+      // Never fall back to printing the page itself on iOS (that is the clipped, partial output): show why instead.
+      const { toast } = await import("sonner");
+      toast.error(`تعذّر تجهيز ملف الطباعة: ${e instanceof Error ? e.message : "خطأ غير معروف"}`, { duration: 15000 });
+      return;
+    }
   }
 
   // Phones: print the page itself (the print CSS fits the report to the narrow layout); no tabs, no viewport tricks.
