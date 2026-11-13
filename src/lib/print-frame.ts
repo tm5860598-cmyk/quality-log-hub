@@ -11,6 +11,9 @@
 export const isMobileBrowser = () =>
   /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform));
 
+const isIOS = () =>
+  /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform));
+
 /** Kept for callers that open a window inside the click handler; popups are no longer used. */
 export function openPrintWindow(): Window | null {
   return null;
@@ -28,6 +31,32 @@ async function settle(root: ParentNode, ms: number) {
 export async function printReport(_popup: Window | null = null): Promise<void> {
   const root = document.querySelector<HTMLElement>(".print-root");
   if (!root) { window.print(); return; }
+
+  // iPhone/iPad: Safari's print of the page itself is unreliable (clips, scales, splits blocks, shows page overlays),
+  // so build the real PDF and hand it to the share sheet, whose "Print" action prints the file page by page.
+  if (isIOS()) {
+    try {
+      const { toast } = await import("sonner");
+      const { buildReportPdf, pdfFileName } = await import("./pdf-export");
+      const id = toast.loading("جاري تجهيز الطباعة…");
+      const blob = await buildReportPdf();
+      const name = pdfFileName(document.title);
+      const file = new File([blob], name, { type: "application/pdf" });
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+      if (nav.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: name }); toast.dismiss(id); return; }
+        catch (e) {
+          if ((e as Error)?.name === "AbortError") { toast.dismiss(id); return; }
+          // The tap's permission may have expired while the PDF was being built: ask for one more tap.
+          toast("التقرير جاهز — اضغط ثم اختر «طباعة» (Print)", {
+            id, duration: 60000,
+            action: { label: "فتح القائمة", onClick: () => { void navigator.share({ files: [file], title: name }).catch(() => undefined); } },
+          });
+          return;
+        }
+      } else toast.dismiss(id);
+    } catch { /* fall through to plain print */ }
+  }
 
   // Phones: print the page itself (the print CSS fits the report to the narrow layout); no tabs, no viewport tricks.
   if (isMobileBrowser()) { await settle(document, 150); window.print(); return; }
