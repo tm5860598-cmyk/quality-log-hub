@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { printReport } from "@/lib/print-frame";
+import { printReport, savePdf } from "@/lib/print-frame";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -9,8 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  ArrowRight, Plus, Search, X, AlertTriangle, Save, Filter, Trash2, Printer,
-} from "lucide-react";
+  ArrowRight, Plus, Search, X, AlertTriangle, Save, Filter, Trash2, Printer, FileDown } from "lucide-react";
 import { PrintReport } from "@/components/PrintReport";
 
 type Ncr = {
@@ -243,6 +242,7 @@ function NcrDetail({ ncr, canEdit, canDelete, onChange, onDelete, userId }: {
         </div>
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={() => void printReport()}><Printer className="size-4" /> طباعة كتقرير</Button>
+          <Button variant="outline" size="sm" onClick={() => void savePdf("ncr-report")}><FileDown className="size-4" /> حفظ PDF</Button>
           {canDelete && (
             <Button variant="outline" size="sm" onClick={onDelete} className="text-rose-600 border-rose-200 hover:bg-rose-50">
               <Trash2 className="size-4" /> حذف

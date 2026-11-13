@@ -5,9 +5,8 @@
  * (e.g. one question and its answer) cannot change while the browser builds the preview.
  *
  * Phones: iframes and new tabs are unreliable (iOS prints the parent page, in-app browsers block popups
- * or ignore print() in them), so the page itself is printed. The only problem there is that phones lay the
- * page out at ~390px and clip the fixed-width A4 report, so the viewport is widened to A4 width for the
- * duration of the print and restored afterwards.
+ * or ignore print() in them), so the page itself is printed; the report is fitted to the narrow layout by CSS.
+ * Saving a real PDF file is a separate, always-working path: see pdf-export.ts.
  */
 export const isMobileBrowser = () =>
   /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform));
@@ -26,35 +25,12 @@ async function settle(root: ParentNode, ms: number) {
   await Promise.all(imgs.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }))));
 }
 
-async function printMainPage(): Promise<void> {
-  let meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
-  const created = !meta;
-  const previous = meta?.getAttribute("content") ?? null;
-  if (!meta) { meta = document.createElement("meta"); meta.name = "viewport"; document.head.appendChild(meta); }
-  meta.setAttribute("content", `width=${A4_PX}, initial-scale=1`);
-
-  let restored = false;
-  const restore = () => {
-    if (restored) return;
-    restored = true;
-    window.removeEventListener("afterprint", restore);
-    window.removeEventListener("touchstart", restore);
-    if (created) meta!.remove();
-    else if (previous !== null) meta!.setAttribute("content", previous);
-  };
-  window.addEventListener("afterprint", restore);
-  window.addEventListener("touchstart", restore, { passive: true });
-  setTimeout(restore, 120_000);
-
-  await settle(document, 450); // let the browser re-layout at the A4 width before the snapshot is taken
-  window.print();
-}
-
 export async function printReport(_popup: Window | null = null): Promise<void> {
   const root = document.querySelector<HTMLElement>(".print-root");
   if (!root) { window.print(); return; }
 
-  if (isMobileBrowser()) { await printMainPage(); return; }
+  // Phones: print the page itself (the print CSS fits the report to the narrow layout); no tabs, no viewport tricks.
+  if (isMobileBrowser()) { await settle(document, 150); window.print(); return; }
 
   const styles = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
     .map((n) => {
@@ -89,4 +65,12 @@ export async function printReport(_popup: Window | null = null): Promise<void> {
     cleanup();
     window.print(); // last resort: print the page itself
   }
+}
+
+/** "Save as PDF file" button helper (loaded on demand): builds the PDF locally and saves/shares it. */
+export async function savePdf(title: string): Promise<void> {
+  const { toast } = await import("sonner");
+  const { exportReportPdf } = await import("./pdf-export");
+  let id: string | number | undefined;
+  await exportReportPdf(title, (msg, kind) => { id = kind === "info" ? toast.loading(msg, { id }) : kind === "success" ? toast.success(msg, { id }) : toast.error(msg, { id }); });
 }

@@ -299,8 +299,7 @@ function AppScreen({
 
   const handlePrint = () => void printReport();
   const handlePdf = () => {
-    void printReport();
-    toast.success(lang === "ar" ? "اختر «حفظ كملف PDF» من نافذة الطباعة" : "Choose “Save as PDF” in the print window");
+    void import("@/lib/pdf-export").then((m) => m.exportReportPdf("report", (msg, kind) => { if (kind === "error") toast.error(msg); else if (kind === "success") toast.success(msg); else toast.message(msg); }));
   };
 
   const { signOut } = useAuth();

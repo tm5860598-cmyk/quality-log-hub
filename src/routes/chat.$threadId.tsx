@@ -4,10 +4,11 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Send, Loader2, Printer, Menu, CheckCheck } from "lucide-react";
+import { Send, Loader2, Printer, FileDown, Menu, CheckCheck } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
 import { PrintReport } from "@/components/PrintReport";
-import { openPrintWindow, printReport } from "@/lib/print-frame";
+import { printReport } from "@/lib/print-frame";
+import { exportReportPdf } from "@/lib/pdf-export";
 import { printScope } from "@/lib/chat-print";
 import { useCategoryLabel, useDepartment } from "@/lib/departments";
 import { toast } from "sonner";
@@ -162,17 +163,23 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
   useEffect(() => { if (!input && inputRef.current) inputRef.current.style.height = "auto"; }, [input]);
 
   /** Prints the whole thread (ids = null) or only the given messages. */
-  const runPrint = useCallback(async (ids: Set<string> | null) => {
+  const runPrint = useCallback(async (ids: Set<string> | null, mode: "print" | "pdf" = "print") => {
     if (latest.current.busy) { toast.info("انتظر حتى تنتهي الإجابة ثم اطبع"); return; }
     if (latest.current.count === 0) { toast.info("لا توجد رسائل للطباعة في هذه المحادثة"); return; }
-    const popup = openPrintWindow(); // phones: needs the click gesture, so before any wait
     setPrintIds(ids);
     // Let the print layout mount, then wait for fonts and the company logo.
     await new Promise((r) => setTimeout(r, 450));
     try { await document.fonts?.ready; } catch { /* ignore */ }
-    await printReport(popup);
+    if (mode === "pdf") {
+      const first = ids ? messages.find((m) => ids.has(m.id) && m.role === "user") : messages.find((m) => m.role === "user");
+      const title = first ? getText(first).slice(0, 40) : "chat-report";
+      let tid: string | number | undefined;
+      await exportReportPdf(title, (msg, kind) => { tid = kind === "info" ? toast.loading(msg, { id: tid }) : (kind === "success" ? toast.success(msg, { id: tid }) : toast.error(msg, { id: tid })); });
+    } else {
+      await printReport();
+    }
     // Keep the chosen scope: some browsers still print the page itself after this returns.
-  }, []);
+  }, [messages]);
 
   // Opened from the conversation list with ?print=1 → print once, then clean the URL.
   useEffect(() => {
@@ -196,7 +203,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     await sendMessage({ text });
   };
 
-  const printSingle = (answerId: string) => void runPrint(printScope(messages, answerId));
+  const printSingle = (answerId: string, mode: "print" | "pdf" = "print") => void runPrint(printScope(messages, answerId), mode);
 
   /* ------------------------------- print data ------------------------------ */
   const printMessages = printIds ? messages.filter((m) => printIds.has(m.id)) : messages;
@@ -293,6 +300,10 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
           <Printer className="size-4" />
           <span className="hidden sm:inline">طباعة المحادثة</span>
         </button>
+        <button type="button" className="wa-print-btn" onClick={() => void runPrint(null, "pdf")} disabled={isBusy || messages.length === 0} title="حفظ المحادثة كملف PDF على الجهاز">
+          <FileDown className="size-4" />
+          <span className="hidden sm:inline">حفظ PDF</span>
+        </button>
       </header>
 
       <div ref={scrollRef} className="wa-wallpaper wa-scroll print:hidden">
@@ -322,6 +333,11 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
                       {!isUser && text && (
                         <button type="button" className="wa-mini-btn" onClick={() => printSingle(m.id)} title="طباعة هذا السؤال والإجابة" aria-label="طباعة هذا السؤال والإجابة">
                           <Printer className="size-3.5" />
+                        </button>
+                      )}
+                      {!isUser && text && (
+                        <button type="button" className="wa-mini-btn" onClick={() => printSingle(m.id, "pdf")} title="حفظ هذا السؤال والإجابة كملف PDF" aria-label="حفظ هذا السؤال والإجابة كملف PDF">
+                          <FileDown className="size-3.5" />
                         </button>
                       )}
                       <span>{fmtTime(at)}</span>
