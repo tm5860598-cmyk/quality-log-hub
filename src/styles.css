@@ -636,12 +636,12 @@
   /* When a standalone print layout exists, print ONLY it. */
   body:has(.print-root) > *:not(.print-root) { display: none !important; }
 
-  html, body { min-width: 170mm !important; }
+  html, body { min-width: 0 !important; }
   .print-root {
     display: block !important;
     position: static !important;
-    width: 170mm !important;
-    max-width: none !important;
+    width: min(170mm, 100%) !important;
+    max-width: 100% !important;
     margin-inline: auto !important;
     height: auto !important;
     max-height: none !important;

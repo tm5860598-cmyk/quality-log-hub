@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { printReport } from "@/lib/print-frame";
+import { printReport, savePdf } from "@/lib/print-frame";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartment } from "@/lib/departments";
@@ -12,8 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   ArrowRight, Plus, Search, Save, Trash2, Printer, Calculator, Package, X, Pencil,
-  Info, FlaskConical, ListOrdered, ImageIcon, ChevronUp, ChevronDown, QrCode, FileText, Upload,
-} from "lucide-react";
+  Info, FlaskConical, ListOrdered, ImageIcon, ChevronUp, ChevronDown, QrCode, FileText, Upload, FileDown } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 import { QrLabelDialog } from "@/components/QrLabelDialog";
 import { SopDialog } from "@/components/SopDialog";
@@ -369,6 +368,9 @@ function ProductDetail({
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={() => void printReport()}>
             <Printer className="size-4" /> طباعة كتقرير
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void savePdf("product-report")}>
+            <FileDown className="size-4" /> حفظ PDF
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowQr(true)}>
             <QrCode className="size-4" /> QR
