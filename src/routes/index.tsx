@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import {
   Languages, Plus, Save, Printer, FileDown, Trash2,
   LogOut, FileText, LogIn, UserPlus, FolderOpen, Sparkles, Settings as SettingsIcon,
-  Bell, Search, X, Layers, Clock, Film, MessageCircle,
+  Bell, Search, X, Film, MessageCircle, AlertTriangle, CheckCircle2, Upload, ShieldAlert, RefreshCw, Mic,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -605,6 +605,9 @@ type DashDoc = {
   updated_at: string | null;
 };
 
+type DashFeedItem = { key: string; kind: "report" | "ncr" | "chat" | "doc"; title: string; at: string; dept: string | null; threadId?: string };
+type DashAttn = { key: string; kind: "ncr" | "capa"; overdue: boolean; title: string; note: string };
+
 function Dashboard({
   lang, setLang, username,
 }: { lang: Lang; setLang: (l: Lang) => void; username?: string }) {
@@ -621,6 +624,49 @@ function Dashboard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const closeMenus = () => { setBellOpen(false); setMenuOpen(false); };
+  const [feed, setFeed] = useState<DashFeedItem[]>([]);
+  const [attn, setAttn] = useState<DashAttn[]>([]);
+  const [extraLoaded, setExtraLoaded] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const [reps, ncrs, threads, capas] = await Promise.all([
+        supabase.from("reports").select("id, title, report_number, updated_at").order("updated_at", { ascending: false }).limit(6),
+        supabase.from("ncr_reports").select("id, ncr_number, title, status, severity, department_id, reported_at, updated_at").order("updated_at", { ascending: false }).limit(40),
+        supabase.from("chat_threads").select("id, title, category, updated_at").order("updated_at", { ascending: false }).limit(6),
+        supabase.from("capa_actions").select("id, ncr_id, description, status, due_date").lt("due_date", today).not("status", "in", "(done,verified)").limit(10),
+      ]);
+      const items: DashFeedItem[] = [];
+      for (const r of (reps.data ?? []) as Array<{ id: string; title: string | null; report_number: string | null; updated_at: string }>) {
+        items.push({ key: `r${r.id}`, kind: "report", title: r.title || r.report_number || "تقرير", at: r.updated_at, dept: null });
+      }
+      const ncrRows = (ncrs.data ?? []) as Array<{ id: string; ncr_number: string | null; title: string | null; status: string; severity: string; department_id: string | null; reported_at: string; updated_at: string }>;
+      for (const n of ncrRows.slice(0, 6)) {
+        items.push({ key: `n${n.id}`, kind: "ncr", title: `${n.ncr_number ?? ""} ${n.title ?? ""}`.trim(), at: n.updated_at || n.reported_at, dept: null });
+      }
+      for (const c of (threads.data ?? []) as Array<{ id: string; title: string | null; category: string; updated_at: string }>) {
+        items.push({ key: `c${c.id}`, kind: "chat", title: c.title || "محادثة", at: c.updated_at, dept: c.category, threadId: c.id });
+      }
+      setFeed(items);
+
+      const att: DashAttn[] = [];
+      const weekAgo = Date.now() - 7 * 86400000;
+      for (const n of ncrRows.filter((x) => x.status !== "closed")) {
+        const overdue = new Date(n.reported_at).getTime() < weekAgo;
+        att.push({
+          key: `n${n.id}`, kind: "ncr", overdue,
+          title: `${n.ncr_number ?? ""} ${n.title ?? ""}`.trim(),
+          note: overdue ? `مفتوحة ${dashRelTime(n.reported_at)} — متأخرة` : `مفتوحة ${dashRelTime(n.reported_at)}`,
+        });
+      }
+      for (const c of (capas.data ?? []) as Array<{ id: string; description: string | null; due_date: string }>) {
+        att.push({ key: `p${c.id}`, kind: "capa", overdue: true, title: c.description || "إجراء تصحيحي", note: `تجاوز الموعد ${c.due_date}` });
+      }
+      setAttn(att);
+      setExtraLoaded(true);
+    })();
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -637,6 +683,7 @@ function Dashboard({
   const visibleDepts = departments.filter((d) => can(d.key).view);
   const deptTitle = (key: string) => {
     const d = departments.find((x) => x.key === key);
+    if (key === "general") return t("عام", "General");
     return d ? (lang === "ar" ? d.title_ar : d.title_en) : key;
   };
 
@@ -650,12 +697,6 @@ function Dashboard({
         .slice(0, 8)
     : [];
 
-  const scoped = filter ? docs.filter((d) => d.category === filter) : docs;
-  const recent = scoped.slice(0, 5);
-  const lastUpdate = docs.reduce<string | null>(
-    (acc, d) => (d.updated_at && (!acc || d.updated_at > acc) ? d.updated_at : acc),
-    null,
-  );
 
   const cards = (filter ? visibleDepts.filter((d) => d.key === filter) : visibleDepts).map((d) => {
     const cat = docs.filter((x) => x.category === d.key);
@@ -824,44 +865,122 @@ function Dashboard({
           )}
         </div>
 
-        {/* ---------- Stats ---------- */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <DashStat icon={<Layers className="size-5" />} tone="text-sky-700 dark:text-sky-300 bg-sky-500/15"
-            value={String(visibleDepts.length)} label={t("عدد الأقسام", "Departments")} />
-          <DashStat icon={<Clock className="size-5" />} tone="text-amber-700 dark:text-amber-300 bg-amber-500/15"
-            value={lastUpdate ? dashRelTime(lastUpdate) : "—"} label={t("آخر تحديث", "Last update")} />
-          <DashStat icon={<FolderOpen className="size-5" />} tone="text-teal-700 dark:text-teal-300 bg-teal-500/15"
-            value={loaded ? docs.length.toLocaleString("en-US") : "…"}
-            label={t("إجمالي الملفات", "Total files")} />
-        </div>
-
-        {/* ---------- Recent files ---------- */}
+        {/* ---------- Quick actions ---------- */}
         <section className="space-y-3">
-          <h2 className="text-sm font-extrabold text-[var(--dash-text)]">{t("آخر الملفات", "Recent files")}</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {recent.map((d) => {
-              const meta = dashFileMeta(d.file_name);
-              return (
-                <Link
-                  key={d.id}
-                  to="/documents/$category"
-                  params={{ category: d.category }}
-                  className="flex min-w-[230px] items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-3 backdrop-blur-xl transition hover:border-primary/40 hover:bg-[var(--dash-card-strong)]"
-                >
-                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl border text-[11px] font-extrabold ${meta.cls}`}>{meta.label}</span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-bold">{d.title}</span>
-                    <span className="block truncate text-xs text-[var(--dash-muted)]">
-                      {deptTitle(d.category)} · {dashSize(d.file_size)}
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
-            {loaded && recent.length === 0 && (
-              <p className="py-4 text-sm text-[var(--dash-muted)]">{t("لا ملفات بعد — ارفع أول ملف من قسم", "No files yet — upload from a department")}</p>
+          <h2 className="text-sm font-extrabold text-[var(--dash-text)]">{t("اختصارات سريعة", "Quick actions")}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              { icon: <FileText className="size-6" />, label: t("تقرير جديد", "New report"), tone: "text-sky-700 dark:text-sky-300 bg-sky-500/15", el: (c: string, ch: React.ReactNode) => <Link key="a1" to="/" search={{ view: "editor" as const }} className={c}>{ch}</Link> },
+              { icon: <ShieldAlert className="size-6" />, label: t("حالة عدم مطابقة جديدة", "New NCR"), tone: "text-rose-700 dark:text-rose-300 bg-rose-500/15", el: (c: string, ch: React.ReactNode) => <Link key="a2" to="/ncr" className={c}>{ch}</Link> },
+              { icon: <Sparkles className="size-6" />, label: t("اسأل المساعد", "Ask assistant"), tone: "text-violet-700 dark:text-violet-300 bg-violet-500/15", el: (c: string, ch: React.ReactNode) => <Link key="a3" to="/chat" className={c}>{ch}</Link> },
+              { icon: <Upload className="size-6" />, label: t("ارفع مستند", "Upload document"), tone: "text-teal-700 dark:text-teal-300 bg-teal-500/15", el: (c: string, ch: React.ReactNode) => <Link key="a4" to="/documents/$category" params={{ category: filter ?? visibleDepts[0]?.key ?? "quality-reports" }} className={c}>{ch}</Link> },
+              { icon: <Mic className="size-6" />, label: t("حوّل ملف لصوت", "File to audio"), tone: "text-amber-700 dark:text-amber-300 bg-amber-500/15", el: (c: string, ch: React.ReactNode) => <Link key="a5" to="/convert" className={c}>{ch}</Link> },
+            ].map((a) =>
+              a.el(
+                "flex flex-col items-center gap-2 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-4 text-center backdrop-blur-xl transition hover:border-primary/40 hover:bg-[var(--dash-card-strong)]",
+                <>
+                  <span className={`grid size-12 place-items-center rounded-2xl ${a.tone}`}>{a.icon}</span>
+                  <span className="text-sm font-bold leading-snug">{a.label}</span>
+                </>,
+              ),
             )}
           </div>
+        </section>
+
+        {/* ---------- Needs attention ---------- */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-extrabold text-[var(--dash-text)]">{t("يحتاج انتباهك", "Needs your attention")}</h2>
+          {!loaded || !extraLoaded ? (
+            <p className="text-sm text-[var(--dash-muted)]">…</p>
+          ) : (() => {
+            const failedDocs = docs.filter((d) => d.status === "failed");
+            const total = attn.length + failedDocs.length;
+            if (total === 0) {
+              return (
+                <div className="flex items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-4 backdrop-blur-xl">
+                  <CheckCircle2 className="size-6 text-emerald-600 dark:text-emerald-300" />
+                  <span className="text-sm font-bold">{t("كل شيء تمام ✓", "All clear ✓")}</span>
+                </div>
+              );
+            }
+            const rowCls = "flex items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-3 backdrop-blur-xl transition hover:border-primary/40 hover:bg-[var(--dash-card-strong)]";
+            return (
+              <div className="space-y-2">
+                {attn.slice(0, 5).map((a) => (
+                  <Link key={a.key} to="/ncr" className={rowCls}>
+                    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${a.overdue ? "bg-rose-500/15 text-rose-600 dark:text-rose-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"}`}>
+                      <AlertTriangle className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold">{a.title}</span>
+                      <span className="block truncate text-xs text-[var(--dash-muted)]">
+                        {a.kind === "capa" ? t("إجراء تصحيحي — ", "Corrective action — ") : t("حالة عدم مطابقة — ", "NCR — ")}{a.note}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+                {failedDocs.slice(0, 4).map((d) => (
+                  <Link key={d.id} to="/documents/$category" params={{ category: d.category }} className={rowCls}>
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-300">
+                      <FileText className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold">{d.title}</span>
+                      <span className="block truncate text-xs text-[var(--dash-muted)]">{t("فشل التحليل —", "Analysis failed —")} {deptTitle(d.category)}</span>
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+                      <RefreshCw className="size-3" /> {t("إعادة المحاولة", "Retry")}
+                    </span>
+                  </Link>
+                ))}
+                {total > 9 && <p className="text-center text-xs text-[var(--dash-muted)]">{t(`و ${total - 9} عناصر أخرى`, `and ${total - 9} more`)}</p>}
+              </div>
+            );
+          })()}
+        </section>
+
+        {/* ---------- Recent activity ---------- */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-extrabold text-[var(--dash-text)]">{t("آخر نشاط", "Recent activity")}</h2>
+          {(() => {
+            const docItems: DashFeedItem[] = docs.slice(0, 6).map((d) => ({ key: `d${d.id}`, kind: "doc", title: d.title, at: d.updated_at ?? "", dept: d.category }));
+            const all = [...feed, ...docItems]
+              .filter((i) => i.at && (!filter || i.dept === filter || i.dept === null))
+              .sort((x, y) => (x.at < y.at ? 1 : -1))
+              .slice(0, 8);
+            if (!loaded || !extraLoaded) return <p className="text-sm text-[var(--dash-muted)]">…</p>;
+            if (all.length === 0) return <p className="text-sm text-[var(--dash-muted)]">{t("لا نشاط بعد", "No activity yet")}</p>;
+            const meta = {
+              report: { icon: <FileText className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300", label: t("تم حفظ تقرير", "Report saved") },
+              ncr: { icon: <ShieldAlert className="size-4" />, tone: "bg-rose-500/15 text-rose-700 dark:text-rose-300", label: t("حالة عدم مطابقة", "NCR updated") },
+              chat: { icon: <MessageCircle className="size-4" />, tone: "bg-violet-500/15 text-violet-700 dark:text-violet-300", label: t("تحديث محادثة", "Chat updated") },
+              doc: { icon: <Upload className="size-4" />, tone: "bg-teal-500/15 text-teal-700 dark:text-teal-300", label: t("تم رفع مستند", "Document uploaded") },
+            } as const;
+            const cls = "flex items-center gap-3 rounded-2xl border border-[var(--dash-border)] bg-[var(--dash-card)] p-3 backdrop-blur-xl transition hover:border-primary/40 hover:bg-[var(--dash-card-strong)]";
+            return (
+              <div className="space-y-2">
+                {all.map((i) => {
+                  const m = meta[i.kind];
+                  const body = (
+                    <>
+                      <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${m.tone}`}>{m.icon}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold">{i.title}</span>
+                        <span className="block truncate text-xs text-[var(--dash-muted)]">
+                          {m.label}{i.dept ? ` · ${deptTitle(i.dept)}` : ""}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[11px] text-[var(--dash-muted)]">{dashRelTime(i.at)}</span>
+                    </>
+                  );
+                  if (i.kind === "report") return <Link key={i.key} to="/" search={{ view: "reports" as const }} className={cls}>{body}</Link>;
+                  if (i.kind === "ncr") return <Link key={i.key} to="/ncr" className={cls}>{body}</Link>;
+                  if (i.kind === "chat" && i.threadId) return <Link key={i.key} to="/chat/$threadId" params={{ threadId: i.threadId }} className={cls}>{body}</Link>;
+                  return <Link key={i.key} to="/documents/$category" params={{ category: i.dept ?? "quality-reports" }} className={cls}>{body}</Link>;
+                })}
+              </div>
+            );
+          })()}
         </section>
 
         {/* ---------- Filters ---------- */}
@@ -957,18 +1076,6 @@ function Dashboard({
       >
         <Plus className={`size-7 transition-transform duration-300 ${fabOpen ? "rotate-45" : ""}`} />
       </button>
-    </div>
-  );
-}
-
-function DashStat({ icon, tone, value, label }: { icon: React.ReactNode; tone: string; value: string; label: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-4 backdrop-blur-xl">
-      <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${tone}`}>{icon}</span>
-      <span className="min-w-0">
-        <span className="block truncate text-lg font-extrabold">{value}</span>
-        <span className="block text-xs text-[var(--dash-muted)]">{label}</span>
-      </span>
     </div>
   );
 }
