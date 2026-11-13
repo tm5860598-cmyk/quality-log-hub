@@ -111,6 +111,26 @@ async function layout(source: HTMLElement, css: string, fonts: string): Promise<
     if (/^H[1-5]$/.test(el.tagName)) candidates.add(Math.round(r.top - top)); // break BEFORE a heading, never right after it
     else candidates.add(Math.round(r.bottom - top));
   });
+  // Every rendered text line: a page break must never land inside one (the last line was being cut in half).
+  const lines: Array<[number, number]> = [];
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (!n.nodeValue || !n.nodeValue.trim()) continue;
+    const range = doc.createRange();
+    range.selectNodeContents(n);
+    for (const r of Array.from(range.getClientRects())) {
+      if (r.height > 0) lines.push([Math.floor(r.top - top), Math.ceil(r.bottom - top)]);
+    }
+  }
+  /** Moves a break up to the top of any text line it would cut through. */
+  const clearOfText = (y: number, min: number) => {
+    let out = y;
+    for (let again = true, guard = 0; again && guard < 50; guard++) {
+      again = false;
+      for (const [a, b] of lines) if (a < out - 1 && b > out + 1 && a > min) { out = a; again = true; }
+    }
+    return out;
+  };
   const height = Math.ceil(root.getBoundingClientRect().height);
   const sorted = [...candidates].filter((y) => y > 0 && y < height).sort((a, b) => a - b);
   const breaks: number[] = [0];
@@ -119,7 +139,7 @@ async function layout(source: HTMLElement, css: string, fonts: string): Promise<
     const limit = y0 + CONTENT_H;
     let best = -1;
     for (const c of sorted) { if (c <= limit && c > y0 + 160) best = c; else if (c > limit) break; }
-    y0 = best > 0 ? best : limit;
+    y0 = clearOfText(best > 0 ? best : limit, y0 + 120);
     breaks.push(y0);
   }
   return { frame, doc, root, breaks, height };
