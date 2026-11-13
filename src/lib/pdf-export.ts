@@ -126,7 +126,7 @@ async function layout(source: HTMLElement, css: string, fonts: string): Promise<
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("تعذّر رسم الصفحة")); i.src = src; });
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => { (i.decode ? i.decode() : Promise.resolve()).catch(() => undefined).then(() => res(i)); }; i.onerror = () => rej(new Error("تعذّر رسم الصفحة (المتصفح رفض رسم التقرير)")); i.src = src; });
 }
 
 async function renderPage(f: Frame, css: string, fonts: string, y0: number, y1: number, pageNo: number, pages: number): Promise<Blob> {
@@ -144,6 +144,9 @@ async function renderPage(f: Frame, css: string, fonts: string, y0: number, y1: 
   const g = c.getContext("2d")!;
   g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
   g.drawImage(img, 0, 0, c.width, c.height);
+  await new Promise((r) => setTimeout(r, 60));
+  g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(img, 0, 0, c.width, c.height); // Safari can paint foreignObject blank on the first draw
   g.fillStyle = "#64748b"; g.font = `${11 * SCALE}px Tahoma, Arial, sans-serif`; g.textAlign = "center";
   g.fillText(`${pageNo} / ${pages}`, c.width / 2, (PAGE_H - 28) * SCALE);
   return await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("تعذّر إنشاء الصفحة"))), "image/jpeg", 0.92));
