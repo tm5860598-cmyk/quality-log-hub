@@ -204,7 +204,12 @@ export function splitSections(md: string) {
  * Renders assistant answers: prose, tables, callout cards and — with `cards` —
  * every `## section` as a titled card (template-style layout, on screen and in print).
  */
-export function MarkdownView({ children, cards = false, structured = false }: { children: string; cards?: boolean; structured?: boolean }) {
+export function MarkdownView({ children: raw, cards = false, structured = false }: { children: string; cards?: boolean; structured?: boolean }) {
+  // Models sometimes emit literal <br> tags: a line break in prose, a separator inside table rows.
+  const children = raw
+    .split("\n")
+    .map((l) => (/^\s*\|/.test(l) ? l.replace(/<br\s*\/?>/gi, " — ") : l.replace(/<br\s*\/?>/gi, "\n")))
+    .join("\n");
   const render = (src: string) => (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={structured ? structuredComponents : components}>
       {src}
