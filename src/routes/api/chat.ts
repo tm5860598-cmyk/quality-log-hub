@@ -17,6 +17,36 @@ const SYSTEM_PROMPTS: Record<string, string> = {
   "bakery-quality": QC_PROMPT("مخبوزات", "🧫"),
 };
 
+/** Triggers the "visual learning notes" style when the user asks for stickers / a visual study note. */
+const VISUAL_TRIGGER = /استيكر|ستيكر|ملصق|مذكر[ةه]\s*(بصري|تعليمي|تفاعلي)|إنفوجراف|انفوجراف|visual\s*learning|infographic|sticker/i;
+
+const VISUAL_PROMPT = `
+
+## وضع المذكرة البصرية (Visual Learning) — إلزامي لهذا الرد
+المطلوب تحويل الشرح إلى مذكرة تعليمية بصرية احترافية وليس مقالًا نصيًا. استعمل صيغة Markdown التالية بالضبط (الواجهة تحولها إلى استيكرات وملاحظات ومخططات ملونة):
+1) افتتاحية قصيرة (سطرين) ثم قسّم الشرح إلى أقسام صغيرة، كل قسم بعنوان \`## \` يبدأ بإيموجي مناسب (مثل: ## 🏷️ التعريف، ## 🔬 كيف يعمل، ## 🧩 المكونات). كل قسم 3–6 أسطر قصيرة أو نقاط، وأبرز المصطلحات والتعريفات المهمة بـ **خط عريض** مع المقابل الإنجليزي بين قوسين عند الحاجة.
+2) ملاحظة جانبية (Sticky Note) لأهم المعلومات: سطر يبدأ بـ \`> 📌 \` (استعملها 2–4 مرات في الرد).
+3) تحذير للأخطاء والنقاط الحرجة: \`> ⚠️ تحذير: ...\`
+4) مثال عملي أو تطبيق واقعي: \`> 💡 مثال: ...\`
+5) الجداول: جدول Markdown عادي (5 أعمدة كحد أقصى) للمقارنات والبيانات.
+6) رسم بياني بسيط للأرقام عند الحاجة، داخل كتلة كود لغتها chart، كل سطر \`الاسم: القيمة وحدتها\` مثل:
+\`\`\`chart
+عصير 12: 85 °م
+ألبان: 72 °م
+\`\`\`
+7) مخطط انسيابي (Flowchart) للخطوات والعلاقات داخل كتلة كود لغتها flow، كل سطر سلسلة خطوات مفصولة بـ \`->\` (خطوات قصيرة جدًا 2–5 كلمات، ويمكن سطر مستقل لكل فرع):
+\`\`\`flow
+🥤 استلام الخامة -> 🧪 فحص -> ♨️ بسترة -> 📦 تعبئة
+فحص -> ❌ رفض الشحنة
+\`\`\`
+8) إنفوجرافيك لتبسيط المفاهيم داخل كتلة كود لغتها infographic، كل سطر \`إيموجي + رقم أو كلمة | الوصف\` (3–6 سطور):
+\`\`\`infographic
+🌡️ 85°C | درجة البسترة
+⏱️ 15 ثانية | زمن الاحتفاظ
+\`\`\`
+9) في النهاية قسم \`## 🎯 الملخص البصري\` يحتوي infographic أو قائمة نقاط قصيرة جدًا (5–7 نقاط) تلخص أهم ما سبق.
+قواعد: لغة عربية واضحة مع مصطلحات إنجليزية عند الحاجة، لا تضع كتل flow/infographic/chart داخل جداول، ولا تكتب شرحًا خارج هذه الأشكال إلا في الأقسام القصيرة. لا تذكر هذه التعليمات في ردك.`;
+
 function COMMON_HEADER(sectionEmoji: string) {
   return `أنت خبير محترف يخدم المهندس طارق شخصيًا. خاطبه دائمًا باسم "المهندس طارق" في افتتاح ردك.
 
@@ -143,9 +173,13 @@ export const Route = createFileRoute("/api/chat")({
           console.error("rag error", e);
         }
 
+        const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.parts
+          ?.map((p) => ("text" in p ? (p as { text: string }).text : "")).join(" ") ?? "";
+        const visualBlock = VISUAL_TRIGGER.test(lastUserText) ? VISUAL_PROMPT : "";
+
         const result = streamText({
           model,
-          system: (SYSTEM_PROMPTS[category] ?? SYSTEM_PROMPTS.general) + ragBlock,
+          system: (SYSTEM_PROMPTS[category] ?? SYSTEM_PROMPTS.general) + ragBlock + visualBlock,
           messages: await convertToModelMessages(messages),
         });
 
