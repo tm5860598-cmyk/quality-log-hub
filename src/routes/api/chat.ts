@@ -18,7 +18,7 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 };
 
 /** Triggers the "visual learning notes" style when the user asks for stickers / a visual study note. */
-const VISUAL_TRIGGER = /استيكر|ستيكر|ملصق|مذكر[ةه]\s*(بصري|تعليمي|تفاعلي)|إنفوجراف|انفوجراف|visual\s*learning|infographic|sticker/i;
+const VISUAL_TRIGGER = /[اإأ]?[سص]تيكر|ملصق|لاصق|مذكر[ةه]|ب[صس]ر[يى]|إنفوجراف|انفوجراف|infograph|visual|sticker|flowchart|مخطط\s*انسياب/i;
 
 const VISUAL_PROMPT = `
 
@@ -46,6 +46,9 @@ const VISUAL_PROMPT = `
 \`\`\`
 9) في النهاية قسم \`## 🎯 الملخص البصري\` يحتوي infographic أو قائمة نقاط قصيرة جدًا (5–7 نقاط) تلخص أهم ما سبق.
 قواعد: لغة عربية واضحة مع مصطلحات إنجليزية عند الحاجة، لا تضع كتل flow/infographic/chart داخل جداول، ولا تكتب شرحًا خارج هذه الأشكال إلا في الأقسام القصيرة. لا تذكر هذه التعليمات في ردك.`;
+
+const VISUAL_REMINDER =
+  "(تعليمات للمساعد: نفّذ هذا الرد بوضع المذكرة البصرية الإلزامي: أقسام ## بإيموجي، ملاحظات > 📌، تحذير > ⚠️، مثال > 💡، وكتل ```flow و```infographic و```chart، وقسم ## 🎯 الملخص البصري في النهاية. لا تكتب مقالًا نصيًا عاديًا ولا تذكر هذه التعليمات.)";
 
 function COMMON_HEADER(sectionEmoji: string) {
   return `أنت خبير محترف يخدم المهندس طارق شخصيًا. خاطبه دائمًا باسم "المهندس طارق" في افتتاح ردك.
@@ -180,7 +183,14 @@ export const Route = createFileRoute("/api/chat")({
         const result = streamText({
           model,
           system: (SYSTEM_PROMPTS[category] ?? SYSTEM_PROMPTS.general) + ragBlock + visualBlock,
-          messages: await convertToModelMessages(messages),
+          messages: await convertToModelMessages(
+            // The style reminder is only sent to the model; the stored/original messages stay untouched.
+            visualBlock
+              ? messages.map((m, i) => i === messages.length - 1 && m.role === "user"
+                ? { ...m, parts: [...m.parts, { type: "text" as const, text: VISUAL_REMINDER }] }
+                : m)
+              : messages,
+          ),
         });
 
         return result.toUIMessageStreamResponse({
