@@ -132,6 +132,16 @@ function BarChart({ src }: { src: string }) {
   );
 }
 
+/** Headings / callouts must not carry the style vocabulary ("Sticky Notes", "Infographic", "Flowchart", "Visual Learning"). */
+const STYLE_WORDS = /\s*[(\[]?\s*(?:sticky\s*notes?|visual\s*learning|infographics?|flow\s*-?\s*charts?)\s*[)\]]?\s*[:：]?/gi;
+function stripStyleWords(line: string): string {
+  if (!/^\s*(#{1,6}\s|>)/.test(line) || !STYLE_WORDS.test(line)) { STYLE_WORDS.lastIndex = 0; return line; }
+  STYLE_WORDS.lastIndex = 0;
+  let out = line.replace(STYLE_WORDS, " ").replace(/\s{2,}/g, " ").replace(/\s+$/, "");
+  if (/^\s*#{1,6}\s/.test(out) && !/[\p{L}\p{N}]/u.test(out.replace(/^\s*#{1,6}\s/, ""))) out += " ملاحظات سريعة";
+  return out;
+}
+
 /** True when the answer uses the visual-notes vocabulary (sticky notes, flowcharts, infographics, charts). */
 export const isVisualNotes = (md: string) => /```(flow|infographic|chart)\b/.test(md) || /^>\s*(📌|📝|💡|🎯)/m.test(md);
 
@@ -209,6 +219,7 @@ export function MarkdownView({ children: raw, cards = false, structured = false 
   const children = raw
     .split("\n")
     .map((l) => (/^\s*\|/.test(l) ? l.replace(/<br\s*\/?>/gi, " — ") : l.replace(/<br\s*\/?>/gi, "\n")))
+    .map(stripStyleWords)
     .join("\n");
   const render = (src: string) => (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={structured ? structuredComponents : components}>

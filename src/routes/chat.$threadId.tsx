@@ -134,7 +134,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     onError: (e) => toast.error(e.message),
   });
   const [input, setInput] = useState("");
-  const [printIds, setPrintIds] = useState<Set<string> | null>(null);
+  const [printIds, setPrintIds] = useState<Set<number> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const timesRef = useRef<Map<string, Date>>(new Map(Object.entries(initialTimes).map(([id, iso]) => [id, new Date(iso)])));
@@ -163,7 +163,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
   useEffect(() => { if (!input && inputRef.current) inputRef.current.style.height = "auto"; }, [input]);
 
   /** Prints the whole thread (ids = null) or only the given messages. */
-  const runPrint = useCallback(async (ids: Set<string> | null, mode: "print" | "pdf" = "print") => {
+  const runPrint = useCallback(async (ids: Set<number> | null, mode: "print" | "pdf" = "print") => {
     if (latest.current.busy) { toast.info("انتظر حتى تنتهي الإجابة ثم اطبع"); return; }
     if (latest.current.count === 0) { toast.info("لا توجد رسائل للطباعة في هذه المحادثة"); return; }
     setPrintIds(ids);
@@ -171,7 +171,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     await new Promise((r) => setTimeout(r, 450));
     try { await document.fonts?.ready; } catch { /* ignore */ }
     if (mode === "pdf") {
-      const first = ids ? messages.find((m) => ids.has(m.id) && m.role === "user") : messages.find((m) => m.role === "user");
+      const first = ids ? messages.find((m, i) => ids.has(i) && m.role === "user") : messages.find((m) => m.role === "user");
       const title = first ? getText(first).slice(0, 40) : "chat-report";
       let tid: string | number | undefined;
       await exportReportPdf(title, (msg, kind) => { tid = kind === "info" ? toast.loading(msg, { id: tid }) : (kind === "success" ? toast.success(msg, { id: tid }) : toast.error(msg, { id: tid })); });
@@ -203,10 +203,10 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     await sendMessage({ text });
   };
 
-  const printSingle = (answerId: string, mode: "print" | "pdf" = "print") => void runPrint(printScope(messages, answerId), mode);
+  const printSingle = (answerIndex: number, mode: "print" | "pdf" = "print") => void runPrint(printScope(messages, answerIndex), mode);
 
   /* ------------------------------- print data ------------------------------ */
-  const printMessages = printIds ? messages.filter((m) => printIds.has(m.id)) : messages;
+  const printMessages = printIds ? messages.filter((_, i) => printIds.has(i)) : messages;
   const exchanges = groupExchanges(printMessages);
   const firstQuestion = getText(printMessages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).trim();
   const reportTitle = cleanQuestion(firstQuestion).slice(0, 80);
@@ -322,12 +322,12 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
                     )}
                     <div className="wa-meta">
                       {!isUser && text && (
-                        <button type="button" className="wa-mini-btn" onClick={() => printSingle(m.id)} title="طباعة هذا السؤال والإجابة" aria-label="طباعة هذا السؤال والإجابة">
+                        <button type="button" className="wa-mini-btn" onClick={() => printSingle(i)} title="طباعة هذا السؤال والإجابة" aria-label="طباعة هذا السؤال والإجابة">
                           <Printer className="size-3.5" />
                         </button>
                       )}
                       {!isUser && text && (
-                        <button type="button" className="wa-mini-btn" onClick={() => printSingle(m.id, "pdf")} title="حفظ هذا السؤال والإجابة كملف PDF" aria-label="حفظ هذا السؤال والإجابة كملف PDF">
+                        <button type="button" className="wa-mini-btn" onClick={() => printSingle(i, "pdf")} title="حفظ هذا السؤال والإجابة كملف PDF" aria-label="حفظ هذا السؤال والإجابة كملف PDF">
                           <FileDown className="size-3.5" />
                         </button>
                       )}
