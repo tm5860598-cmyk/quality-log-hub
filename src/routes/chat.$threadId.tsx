@@ -9,7 +9,7 @@ import { MarkdownView } from "@/components/MarkdownView";
 import { PrintReport } from "@/components/PrintReport";
 import { printReport } from "@/lib/print-frame";
 import { exportReportPdf } from "@/lib/pdf-export";
-import { printScope } from "@/lib/chat-print";
+import { printScope, cleanQuestion } from "@/lib/chat-print";
 import { useCategoryLabel, useDepartment } from "@/lib/departments";
 import { toast } from "sonner";
 
@@ -209,7 +209,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
   const printMessages = printIds ? messages.filter((m) => printIds.has(m.id)) : messages;
   const exchanges = groupExchanges(printMessages);
   const firstQuestion = getText(printMessages.find((m) => m.role === "user") ?? ({ parts: [] } as unknown as UIMessage)).trim();
-  const reportTitle = firstQuestion.slice(0, 80);
+  const reportTitle = cleanQuestion(firstQuestion).slice(0, 80);
   const answerText = exchanges.flatMap((e) => e.answers.map(getText)).join("\n");
   const stats = {
     questions: exchanges.filter((e) => e.question).length,
@@ -217,14 +217,6 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     tables: (answerText.match(TABLE_SEPARATOR) ?? []).length,
     sections: (answerText.match(/^##\s+/gm) ?? []).length,
   };
-  const firstAt = printMessages[0] ? timeOf(printMessages[0].id) : null;
-  const lastAt = printMessages.length ? timeOf(printMessages[printMessages.length - 1].id) : null;
-  const printMeta = [
-    { label: "نطاق الطباعة", value: printIds ? "سؤال وإجابة محددة" : "المحادثة كاملة" },
-    { label: "بداية المحادثة", value: firstAt ? fmtDateTime(firstAt) : "—" },
-    { label: "آخر رسالة", value: lastAt ? fmtDateTime(lastAt) : "—" },
-  ];
-
   return (
     <div className="wa-main">
       {/* Standalone A4 report layout (printed only; skipped while an answer streams). */}
@@ -233,7 +225,6 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
         department={deptLabel}
         product={reportTitle || undefined}
         reportNumber={`CHT-${threadId.slice(0, 8).toUpperCase()}`}
-        meta={printMeta}
       >
         {!isBusy && (
           <>
@@ -249,7 +240,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
                 <div className="print-toc-title">فهرس الأسئلة</div>
                 <ol>
                   {exchanges.map((ex) => (
-                    <li key={`toc-${ex.id}`}>{(ex.question ? getText(ex.question) : "—").replace(/\s+/g, " ").slice(0, 100)}</li>
+                    <li key={`toc-${ex.id}`}>{(ex.question ? cleanQuestion(getText(ex.question)) : "—").slice(0, 100)}</li>
                   ))}
                 </ol>
               </div>
@@ -263,7 +254,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
                       <span className="print-chip">سؤال {i + 1}</span>
                       <span className="print-time">{fmtDateTime(timeOf(ex.question.id))}</span>
                     </div>
-                    <p className="print-q-text">{getText(ex.question)}</p>
+                    <p className="print-q-text">{cleanQuestion(getText(ex.question))}</p>
                   </div>
                 )}
                 {ex.answers.filter((a) => getText(a).trim()).map((a) => (

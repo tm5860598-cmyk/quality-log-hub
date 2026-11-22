@@ -122,6 +122,16 @@ async function layout(source: HTMLElement, css: string, fonts: string): Promise<
       if (r.height > 0) lines.push([Math.floor(r.top - top), Math.ceil(r.bottom - top)]);
     }
   }
+  // Visual blocks (boxes, chips, tiles, rows, headings) must move whole to the next page, never be sliced.
+  root.querySelectorAll<HTMLElement>(".md-callout, .md-flow, .md-flow-row, .md-flow-step, .md-info-grid, .md-info-tile, .md-bars, .md-bar-row, tr, li, pre, blockquote, img, .print-q, .print-a-head, .print-approvals, .print-chat-summary").forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.height > 0 && r.height <= 320) lines.push([Math.floor(r.top - top), Math.ceil(r.bottom - top)]);
+  });
+  // Headings keep company with what follows them: a break just under a heading moves up above it.
+  root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, .md-card-head, .print-title-bar").forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.height > 0) lines.push([Math.floor(r.top - top), Math.ceil(r.bottom - top) + 90]);
+  });
   /** Moves a break up to the top of any text line it would cut through. */
   const clearOfText = (y: number, min: number) => {
     let out = y;
