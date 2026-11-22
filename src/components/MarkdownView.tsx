@@ -11,7 +11,7 @@ function textOf(node: ReactNode): string {
   return "";
 }
 
-type Tone = "info" | "warn" | "ok" | "danger";
+type Tone = "info" | "warn" | "ok" | "danger" | "sticky" | "tip" | "goal";
 
 /** Picks the card tone from the first words of a blockquote. */
 function calloutTone(text: string): Tone {
@@ -19,6 +19,9 @@ function calloutTone(text: string): Tone {
   if (/^(⛔|❌|🚫|خطر|حرج|عدم مطابقة)/.test(t)) return "danger";
   if (/^(⚠|تحذير|تنبيه|انتبه|ملاحظة هامة)/.test(t)) return "warn";
   if (/^(✅|✔|☑|نجاح|مطابق)/.test(t)) return "ok";
+  if (/^(📌|📝|🗒|ملاحظة)/.test(t)) return "sticky";
+  if (/^(💡|🔎|مثال|تطبيق)/.test(t)) return "tip";
+  if (/^(🎯|⭐|الخلاصة)/.test(t)) return "goal";
   return "info";
 }
 
@@ -65,7 +68,85 @@ function KvTable({ rows, numbered }: { rows: KvRow[]; numbered: boolean }) {
   );
 }
 
+
+/* ---------------- Visual-learning blocks (```flow / ```infographic / ```chart) ---------------- */
+const VISUAL_LANG = /language-(flow|infographic|chart)\b/;
+const STEP_COLORS = ["sky", "violet", "emerald", "amber", "rose", "teal"] as const;
+
+function FlowChart({ src }: { src: string }) {
+  const rows = src.split("\n").map((l) => l.trim()).filter(Boolean)
+    .map((l) => l.split(/\s*(?:->|→|⟶|=>)\s*/).map((x) => x.trim()).filter(Boolean))
+    .filter((r) => r.length > 0);
+  return (
+    <div className="md-flow" role="img" aria-label="مخطط انسيابي">
+      {rows.map((steps, r) => (
+        <div className="md-flow-row" key={r}>
+          {steps.map((st, i) => (
+            <span key={i} className="md-flow-item">
+              <span className={`md-flow-step md-c-${STEP_COLORS[(i + r) % STEP_COLORS.length]}`}>{st}</span>
+              {i < steps.length - 1 && <span className="md-flow-arrow" aria-hidden>←</span>}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InfoTiles({ src }: { src: string }) {
+  const tiles = src.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [big, ...rest] = l.split("|");
+    return { big: big.trim(), label: rest.join("|").trim() };
+  });
+  return (
+    <div className="md-info-grid">
+      {tiles.map((t, i) => (
+        <div key={i} className={`md-info-tile md-c-${STEP_COLORS[i % STEP_COLORS.length]}`}>
+          <div className="md-info-big">{t.big}</div>
+          {t.label && <div className="md-info-label">{t.label}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BarChart({ src }: { src: string }) {
+  const rows = src.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const idx = l.lastIndexOf(":");
+    const label = (idx > 0 ? l.slice(0, idx) : l).trim();
+    const raw = idx > 0 ? l.slice(idx + 1).trim() : "";
+    const n = parseFloat(raw.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/)?.[0] ?? "");
+    return { label, raw, n: Number.isFinite(n) ? n : 0 };
+  });
+  const max = Math.max(1, ...rows.map((r) => Math.abs(r.n)));
+  return (
+    <div className="md-bars" role="img" aria-label="رسم بياني">
+      {rows.map((r, i) => (
+        <div key={i} className="md-bar-row">
+          <span className="md-bar-label">{r.label}</span>
+          <span className="md-bar-track"><span className={`md-bar-fill md-c-${STEP_COLORS[i % STEP_COLORS.length]}`} style={{ width: `${Math.max(3, (Math.abs(r.n) / max) * 100)}%` }} /></span>
+          <span className="md-bar-value">{r.raw}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** True when the answer uses the visual-notes vocabulary (sticky notes, flowcharts, infographics, charts). */
+export const isVisualNotes = (md: string) => /```(flow|infographic|chart)\b/.test(md) || /^>\s*(📌|📝|💡|🎯)/m.test(md);
+
 const components: Components = {
+  pre: ({ children: c }) => {
+    const el = Children.toArray(c)[0];
+    if (isValidElement(el) && VISUAL_LANG.test(String((el.props as { className?: string }).className ?? ""))) return <>{c}</>;
+    return <pre>{c}</pre>;
+  },
+  code: ({ className, children: c }) => {
+    const m = VISUAL_LANG.exec(className ?? "");
+    if (!m) return <code className={className}>{c}</code>;
+    const src = textOf(c).replace(/\n$/, "");
+    return m[1] === "flow" ? <FlowChart src={src} /> : m[1] === "infographic" ? <InfoTiles src={src} /> : <BarChart src={src} />;
+  },
   table: ({ node, children: c }) => {
     const kids = ((node as unknown as HastLike | undefined)?.children ?? []) as HastLike[];
     const body = kids.find((k) => k.type === "element" && k.tagName === "tbody");
@@ -132,12 +213,12 @@ export function MarkdownView({ children, cards = false, structured = false }: { 
   const parsed = cards ? splitSections(children) : null;
 
   return (
-    <div className="rich-content md-body max-w-none leading-relaxed">
+    <div className={`rich-content md-body max-w-none leading-relaxed ${isVisualNotes(children) ? "md-visual" : ""}`}>
       {parsed && parsed.sections.length > 0 ? (
         <>
           {parsed.intro.trim() && render(parsed.intro)}
           {parsed.sections.map((s, i) => (
-            <div key={`${i}-${s.title}`} className="md-card">
+            <div key={`${i}-${s.title}`} className={`md-card ${/^\s*🎯/.test(s.title) ? "md-card-goal" : ""}`}>
               <div className="md-card-head" role="heading" aria-level={2}>
                 {s.title.replace(/[*_`]/g, "")}
               </div>

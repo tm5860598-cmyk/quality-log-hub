@@ -372,6 +372,50 @@
 .md-callout.md-ok { --md-accent: #10b981; }
 .md-callout.md-danger { --md-accent: #ef4444; }
 
+
+/* ---------------- Visual-learning notes ---------------- */
+.md-callout.md-sticky {
+  --md-accent: #eab308;
+  border: 0; border-radius: 0.2rem 0.2rem 0.2rem 1.1rem;
+  background: #fef08a; color: #422006;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.15); transform: rotate(-0.6deg);
+}
+.md-callout.md-tip { --md-accent: #22c55e; }
+.md-callout.md-goal { --md-accent: #8b5cf6; }
+.md-visual strong { background: linear-gradient(transparent 55%, color-mix(in oklab, #facc15 55%, transparent) 55%); padding: 0 0.1em; }
+.md-visual .md-card:nth-of-type(6n+1) { --md-accent: #0ea5e9; }
+.md-visual .md-card:nth-of-type(6n+2) { --md-accent: #8b5cf6; }
+.md-visual .md-card:nth-of-type(6n+3) { --md-accent: #10b981; }
+.md-visual .md-card:nth-of-type(6n+4) { --md-accent: #f59e0b; }
+.md-visual .md-card:nth-of-type(6n+5) { --md-accent: #f43f5e; }
+.md-visual .md-card:nth-of-type(6n+6) { --md-accent: #14b8a6; }
+.md-visual .md-card { border-color: color-mix(in oklab, var(--md-accent) 55%, transparent); border-width: 1.5px; }
+.md-visual .md-card-head { background: color-mix(in oklab, var(--md-accent) 20%, transparent); border-inline-start: 5px solid var(--md-accent); font-size: 1rem; }
+.md-visual .md-card.md-card-goal { --md-accent: #7c3aed; border-style: dashed; }
+
+.md-c-sky { --c: #0ea5e9; } .md-c-violet { --c: #8b5cf6; } .md-c-emerald { --c: #10b981; }
+.md-c-amber { --c: #f59e0b; } .md-c-rose { --c: #f43f5e; } .md-c-teal { --c: #14b8a6; }
+
+.md-flow { margin: 0.7rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.md-flow-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0; }
+.md-flow-item { display: inline-flex; align-items: center; }
+.md-flow-step {
+  padding: 0.35rem 0.7rem; border-radius: 0.7rem; font-weight: 700; font-size: 0.85rem; line-height: 1.5;
+  border: 1.5px solid var(--c); background: color-mix(in oklab, var(--c) 14%, transparent);
+}
+.md-flow-arrow { margin: 0 0.3rem; font-weight: 800; color: #64748b; }
+
+.md-info-grid { margin: 0.7rem 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.55rem; }
+.md-info-tile { text-align: center; padding: 0.6rem 0.4rem; border-radius: 0.8rem; border: 1.5px solid var(--c); background: color-mix(in oklab, var(--c) 12%, transparent); }
+.md-info-big { font-size: 1.25rem; font-weight: 800; line-height: 1.4; }
+.md-info-label { margin-top: 0.1rem; font-size: 0.78rem; opacity: 0.85; }
+
+.md-bars { margin: 0.7rem 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.md-bar-row { display: grid; grid-template-columns: minmax(4.5rem, 30%) 1fr auto; align-items: center; gap: 0.5rem; font-size: 0.82rem; }
+.md-bar-track { height: 0.9rem; border-radius: 999px; background: color-mix(in oklab, #64748b 15%, transparent); overflow: hidden; }
+.md-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--c); }
+.md-bar-value { font-weight: 700; white-space: nowrap; }
+
 /* --------------------- WhatsApp-style chat --------------------- */
 .wa-scope {
   --wa-bg: #efeae2;
@@ -897,6 +941,19 @@
   .print-root .md-callout.md-ok { border-color: #A7F3D0; border-inline-start-color: #10B981; background: #ECFDF5 !important; }
   .print-root .md-callout.md-danger { border-color: #FECACA; border-inline-start-color: #EF4444; background: #FEF2F2 !important; }
   .print-root .md-callout p { margin: 2pt 0 !important; }
+
+  /* Visual-learning notes in print / PDF */
+  .print-root .md-callout.md-sticky { border: 0.75pt solid #EAB308; border-inline-start: 3.5pt solid #EAB308; background: #FEF9C3 !important; transform: none; border-radius: 4pt; }
+  .print-root .md-callout.md-tip { border-color: #BBF7D0; border-inline-start-color: #22C55E; background: #F0FDF4 !important; }
+  .print-root .md-callout.md-goal { border-color: #DDD6FE; border-inline-start-color: #8B5CF6; background: #F5F3FF !important; }
+  .print-root .md-flow, .print-root .md-info-grid, .print-root .md-bars { break-inside: avoid; page-break-inside: avoid; }
+  .print-root .md-flow-step, .print-root .md-info-tile { border: 1pt solid var(--c) !important; }
+  .print-root .md-flow-step { background: #F8FAFC !important; }
+  .print-root .md-info-tile { background: #F8FAFC !important; }
+  .print-root .md-bar-track { background: #E2E8F0 !important; }
+  .print-root .md-bar-fill { background: var(--c) !important; }
+  .print-root .md-visual .md-card-head { border-inline-start: 4pt solid var(--md-accent); }
+
 
   /* Tables */
   .print-root .md-body table { margin: 6pt 0 !important; border: 0.75pt solid #64748B !important; font-size: 9.5pt !important; }
