@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
 import { useDepartment } from "@/lib/departments";
-import { ArrowRight, Boxes, FileText, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Boxes, FileText, Clock, CheckCircle2, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/dept/$category")({
   ssr: false,
@@ -26,18 +26,21 @@ function DeptPage() {
   const { status } = useAuth();
   const { can, loading: permLoading } = useDeptPermissions();
   const { dept, loading: deptLoading } = useDepartment(category);
-  const [stats, setStats] = useState({ products: 0, documents: 0, updated: "" });
+  const [stats, setStats] = useState({ products: 0, chats: 0, documents: 0, updated: "" });
+  const isQuality = category.endsWith("-quality");
 
   useEffect(() => {
     if (status !== "authenticated") return;
     void (async () => {
-      const [p, d, last] = await Promise.all([
+      const [p, c, d, last] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }).eq("category", category),
+        supabase.from("chat_threads").select("id", { count: "exact", head: true }).eq("category", category),
         supabase.from("documents").select("id", { count: "exact", head: true }).eq("category", category),
         supabase.from("documents").select("updated_at").eq("category", category).order("updated_at", { ascending: false }).limit(1),
       ]);
       setStats({
         products: p.count ?? 0,
+        chats: c.count ?? 0,
         documents: d.count ?? 0,
         updated: last.data?.[0]?.updated_at ? new Date(last.data[0].updated_at as string).toLocaleDateString("ar-EG") : "—",
       });
@@ -68,7 +71,9 @@ function DeptPage() {
   }
 
   const cards = [
-    { to: "/products/$category" as const, params: { category }, emoji: "📦", title: "المنتجات والحاسبة", desc: "مكتبة المنتجات والوصفات وحاسبة الخامات حسب الكمية المطلوبة", icon: Boxes },
+    isQuality
+      ? { to: "/chat" as const, params: {}, search: { category }, emoji: "🤖", title: "مساعد القسم الذكي", desc: "اسأل عن التحاليل والحدود المسموحة والمواصفات، والمساعد يرد من مستندات القسم مع ذكر المصدر", icon: Sparkles }
+      : { to: "/products/$category" as const, params: { category }, emoji: "📦", title: "المنتجات والحاسبة", desc: "مكتبة المنتجات والوصفات وحاسبة الخامات حسب الكمية المطلوبة", icon: Boxes },
     { to: "/documents/$category" as const, params: { category }, emoji: "📄", title: "مستندات القسم", desc: "ملفات القسم ومراجع المنتجات في مساحة واحدة", icon: FileText },
   ];
 
@@ -105,8 +110,8 @@ function DeptPage() {
 
         <section aria-label="إحصائيات القسم" className="grid grid-cols-3 divide-x divide-x-reverse divide-border overflow-hidden rounded-2xl border bg-card shadow-sm">
           <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
-            <div className="text-lg font-extrabold text-foreground sm:text-xl">{stats.products}</div>
-            <div className="mt-1 text-xs text-muted-foreground sm:text-sm">عدد المنتجات</div>
+            <div className="text-lg font-extrabold text-foreground sm:text-xl">{isQuality ? stats.chats : stats.products}</div>
+            <div className="mt-1 text-xs text-muted-foreground sm:text-sm">{isQuality ? "عدد المحادثات" : "عدد المنتجات"}</div>
           </div>
           <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
             <div className="text-lg font-extrabold text-foreground sm:text-xl">{stats.documents}</div>
