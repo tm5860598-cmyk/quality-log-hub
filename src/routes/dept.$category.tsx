@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
-import { useDepartment } from "@/lib/departments";
+import { useDepartment, QUALITY_REFERENCE_KEY } from "@/lib/departments";
 import { ArrowRight, Boxes, FileText, Clock, CheckCircle2, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/dept/$category")({
@@ -28,6 +28,7 @@ function DeptPage() {
   const { dept, loading: deptLoading } = useDepartment(category);
   const [stats, setStats] = useState({ products: 0, chats: 0, documents: 0, updated: "" });
   const isQuality = category.endsWith("-quality");
+  const isReference = category === QUALITY_REFERENCE_KEY; // reference library: documents only
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -71,9 +72,9 @@ function DeptPage() {
   }
 
   const cards = [
-    isQuality
+    ...(isReference ? [] : [isQuality
       ? { to: "/chat" as const, params: {}, search: { category }, emoji: "🤖", title: "مساعد القسم الذكي", desc: "اسأل عن التحاليل والحدود المسموحة والمواصفات، والمساعد يرد من مستندات القسم مع ذكر المصدر", icon: Sparkles }
-      : { to: "/products/$category" as const, params: { category }, emoji: "📦", title: "المنتجات والحاسبة", desc: "مكتبة المنتجات والوصفات وحاسبة الخامات حسب الكمية المطلوبة", icon: Boxes },
+      : { to: "/products/$category" as const, params: { category }, emoji: "📦", title: "المنتجات والحاسبة", desc: "مكتبة المنتجات والوصفات وحاسبة الخامات حسب الكمية المطلوبة", icon: Boxes }]),
     { to: "/documents/$category" as const, params: { category }, emoji: "📄", title: "مستندات القسم", desc: "ملفات القسم ومراجع المنتجات في مساحة واحدة", icon: FileText },
   ];
 
@@ -108,11 +109,13 @@ function DeptPage() {
           </div>
         </section>
 
-        <section aria-label="إحصائيات القسم" className="grid grid-cols-3 divide-x divide-x-reverse divide-border overflow-hidden rounded-2xl border bg-card shadow-sm">
-          <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
-            <div className="text-lg font-extrabold text-foreground sm:text-xl">{isQuality ? stats.chats : stats.products}</div>
-            <div className="mt-1 text-xs text-muted-foreground sm:text-sm">{isQuality ? "عدد المحادثات" : "عدد المنتجات"}</div>
-          </div>
+        <section aria-label="إحصائيات القسم" className={`grid ${isReference ? "grid-cols-2" : "grid-cols-3"} divide-x divide-x-reverse divide-border overflow-hidden rounded-2xl border bg-card shadow-sm`}>
+          {!isReference && (
+            <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
+              <div className="text-lg font-extrabold text-foreground sm:text-xl">{isQuality ? stats.chats : stats.products}</div>
+              <div className="mt-1 text-xs text-muted-foreground sm:text-sm">{isQuality ? "عدد المحادثات" : "عدد المنتجات"}</div>
+            </div>
+          )}
           <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
             <div className="text-lg font-extrabold text-foreground sm:text-xl">{stats.documents}</div>
             <div className="mt-1 text-xs text-muted-foreground sm:text-sm">عدد المستندات</div>

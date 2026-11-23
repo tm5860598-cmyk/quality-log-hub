@@ -11,15 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import {
-  Languages, Plus, Save, Printer, FileDown, Trash2,
-  LogOut, FileText, LogIn, UserPlus, FolderOpen, Sparkles, Settings as SettingsIcon,
-  Bell, Search, X, Film, MessageCircle, AlertTriangle, CheckCircle2, Upload, ShieldAlert, RefreshCw, Mic,
-} from "lucide-react";
+import { Languages, Plus, Save, Printer, FileDown, Trash2, LogOut, FileText, LogIn, UserPlus, FolderOpen, Sparkles, Settings as SettingsIcon, Bell, Search, X, Film, MessageCircle, AlertTriangle, CheckCircle2, Upload, ShieldAlert, RefreshCw, Mic, ChevronDown, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useDeptPermissions } from "@/lib/permissions";
-import { useWorkspaceDepartments, QUALITY_HUB_KEY } from "@/lib/departments";
+import { useWorkspaceDepartments, QUALITY_HUB_KEY, QUALITY_REFERENCE_KEY } from "@/lib/departments";
 import { PrintReport } from "@/components/PrintReport";
 
 export const Route = createFileRoute("/")({
@@ -627,6 +623,7 @@ function Dashboard({
   const [feed, setFeed] = useState<DashFeedItem[]>([]);
   const [attn, setAttn] = useState<DashAttn[]>([]);
   const [extraLoaded, setExtraLoaded] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -699,7 +696,8 @@ function Dashboard({
 
 
   const cards = (filter ? visibleDepts.filter((d) => d.key === filter) : visibleDepts).map((d) => {
-    const cat = docs.filter((x) => x.category === d.key);
+    // The general-quality tile also owns the reference library documents.
+    const cat = docs.filter((x) => x.category === d.key || (d.key === QUALITY_HUB_KEY && x.category === QUALITY_REFERENCE_KEY));
     const processing = cat.some((x) => x.status === "processing" || x.status === "uploaded");
     const failed = cat.some((x) => x.status === "failed");
     const badge = processing ? t("جاري التحليل", "Analyzing")
@@ -941,13 +939,25 @@ function Dashboard({
 
         {/* ---------- Recent activity ---------- */}
         <section className="space-y-3">
-          <h2 className="text-sm font-extrabold text-[var(--dash-text)]">{t("آخر نشاط", "Recent activity")}</h2>
-          {(() => {
+          <button
+            type="button"
+            onClick={() => setActivityOpen((o) => !o)}
+            aria-expanded={activityOpen}
+            className="flex w-full items-center gap-3 rounded-[20px] border border-[var(--dash-border)] bg-[var(--dash-card)] p-4 text-start backdrop-blur-xl transition hover:border-primary/40 hover:bg-[var(--dash-card-strong)]"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary"><Activity className="size-6" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-extrabold">{t("آخر الأنشطة", "Recent activities")}</span>
+              <span className="block text-xs text-[var(--dash-muted)]">{activityOpen ? t("اضغط للإخفاء", "Tap to hide") : t("اضغط لعرض آخر ما تم على المشروع", "Tap to see the latest work on the project")}</span>
+            </span>
+            <ChevronDown className={`size-5 shrink-0 text-[var(--dash-muted)] transition-transform ${activityOpen ? "rotate-180" : ""}`} />
+          </button>
+          {activityOpen && (() => {
             const docItems: DashFeedItem[] = docs.slice(0, 6).map((d) => ({ key: `d${d.id}`, kind: "doc", title: d.title, at: d.updated_at ?? "", dept: d.category }));
             const all = [...feed, ...docItems]
               .filter((i) => i.at && (!filter || i.dept === filter || i.dept === null))
               .sort((x, y) => (x.at < y.at ? 1 : -1))
-              .slice(0, 8);
+              .slice(0, 10);
             if (!loaded || !extraLoaded) return <p className="text-sm text-[var(--dash-muted)]">…</p>;
             if (all.length === 0) return <p className="text-sm text-[var(--dash-muted)]">{t("لا نشاط بعد", "No activity yet")}</p>;
             const meta = {
