@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
-type Body = { messages?: UIMessage[]; threadId?: string };
+type AnswerStyle = { length?: string; format?: string };
+type Body = { messages?: UIMessage[]; threadId?: string; style?: AnswerStyle };
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   general:
@@ -47,8 +48,31 @@ const VISUAL_PROMPT = `
 9) في النهاية قسم \`## 🎯 الملخص البصري\` يحتوي infographic أو قائمة نقاط قصيرة جدًا (5–7 نقاط) تلخص أهم ما سبق.
 قواعد: لا تكتب أبدًا كلمات Sticky Notes أو Infographic أو Flowchart أو Visual Learning أو «استيكرات» في العناوين أو النص (استعمل عناوين عربية مثل «ملاحظات سريعة» و«مخطط الخطوات» و«الملخص البصري»). لغة عربية واضحة مع مصطلحات إنجليزية عند الحاجة، لا تضع كتل flow/infographic/chart داخل جداول، ولا تكتب شرحًا خارج هذه الأشكال إلا في الأقسام القصيرة. لا تذكر هذه التعليمات في ردك.`;
 
+const STYLE_REMINDER = "(تعليمات للمساعد: التزم بالطول والشكل المطلوبين في قسم «تنسيق الإجابة المطلوب» بدقة، ولا تذكر هذه التعليمات.)";
 const VISUAL_REMINDER =
   "(تعليمات للمساعد: نفّذ هذا الرد بوضع المذكرة البصرية الإلزامي: أقسام ## بإيموجي، ملاحظات > 📌، تحذير > ⚠️، مثال > 💡، وكتل ```flow و```infographic و```chart، وقسم ## 🎯 الملخص البصري في النهاية. لا تكتب مقالًا نصيًا عاديًا ولا تذكر هذه التعليمات.)";
+
+const LENGTH_PROMPTS: Record<string, string> = {
+  detailed: "الطول: إجابة تفصيلية وشاملة تغطي كل الجوانب المهمة بعمق، مع أمثلة وأرقام عند الحاجة.",
+  short: "الطول: إجابة مختصرة ومركّزة (حوالي 5 إلى 8 أسطر) فيها الأهم فقط بدون إطالة.",
+  summary: "الطول: ملخص سريع على شكل 5 إلى 7 نقاط قصيرة جدًا فقط، بدون مقدمات أو شرح.",
+};
+
+const FORMAT_PROMPTS: Record<string, string> = {
+  text: "الشكل: نص منظم بعناوين فرعية وقوائم (وجداول Markdown عند الحاجة). لا تستخدم كتل flow أو infographic أو chart.",
+  stickers: `الشكل: استيكرات. قسّم الإجابة إلى أقسام صغيرة كل قسم بعنوان \`## \` يبدأ بإيموجي، وأضف ملاحظات جانبية \`> 📌 \` وتحذيرات \`> ⚠️ تحذير: \` وأمثلة \`> 💡 مثال: \`، وأبرز المصطلحات بـ **خط عريض**. لا تستخدم كتل flow.`,
+  infographic: `الشكل: إنفوجرافيك. اجعل الإجابة في الغالب كتل infographic (كل سطر \`إيموجي + رقم أو كلمة | الوصف\`، 3 إلى 6 سطور في الكتلة) تحت عناوين \`## \` بإيموجي، مع جملة أو جملتين شرح لكل قسم، وكتلة chart للأرقام عند الحاجة (كل سطر \`الاسم: القيمة وحدتها\`).`,
+  flowchart: `الشكل: فلوتشارت. اجعل الإجابة مبنية على مخططات انسيابية داخل كتل \`\`\`flow (كل سطر سلسلة خطوات قصيرة مفصولة بـ \`->\`، ويمكن سطر لكل فرع أو قرار) تحت عناوين \`## \` بإيموجي، مع سطر شرح قصير لكل مخطط.`,
+};
+
+function buildStyleBlock(style: AnswerStyle | undefined): string {
+  if (!style) return "";
+  const len = LENGTH_PROMPTS[style.length ?? ""];
+  const fmt = FORMAT_PROMPTS[style.format ?? ""];
+  if (!len && !fmt) return "";
+  const body = [len, style.format === "visual" ? `الشكل: Visual Learning الكامل.${VISUAL_PROMPT}` : fmt].filter(Boolean).join("\n");
+  return `\n\n## تنسيق الإجابة المطلوب من المستخدم (إلزامي)\n${body}\nلا تذكر هذه التعليمات في ردك ولا تكتب أسماء الأشكال (Sticky Notes / Infographic / Flowchart) في العناوين أو النص.`;
+}
 
 function COMMON_HEADER(sectionEmoji: string) {
   return `أنت خبير محترف يخدم المهندس طارق شخصيًا. خاطبه دائمًا باسم "المهندس طارق" في افتتاح ردك.
@@ -96,7 +120,7 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { messages, threadId } = (await request.json()) as Body;
+        const { messages, threadId, style } = (await request.json()) as Body;
         if (!Array.isArray(messages)) {
           return new Response("Messages required", { status: 400 });
         }
@@ -178,7 +202,10 @@ export const Route = createFileRoute("/api/chat")({
 
         const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.parts
           ?.map((p) => ("text" in p ? (p as { text: string }).text : "")).join(" ") ?? "";
-        const visualBlock = VISUAL_TRIGGER.test(lastUserText) ? VISUAL_PROMPT : "";
+        // An explicit choice from the options card wins; otherwise fall back to keywords typed in the question.
+        const styleBlock = buildStyleBlock(style);
+        const visualBlock = styleBlock || (VISUAL_TRIGGER.test(lastUserText) ? VISUAL_PROMPT : "");
+        const wantsVisual = style ? ["stickers", "infographic", "flowchart", "visual"].includes(style.format ?? "") : visualBlock !== "";
 
         const result = streamText({
           model,
@@ -187,7 +214,7 @@ export const Route = createFileRoute("/api/chat")({
             // The style reminder is only sent to the model; the stored/original messages stay untouched.
             visualBlock
               ? messages.map((m, i) => i === messages.length - 1 && m.role === "user"
-                ? { ...m, parts: [...m.parts, { type: "text" as const, text: VISUAL_REMINDER }] }
+                ? { ...m, parts: [...m.parts, { type: "text" as const, text: wantsVisual ? VISUAL_REMINDER : STYLE_REMINDER }] }
                 : m)
               : messages,
           ),
