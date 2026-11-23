@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Send, Loader2, Printer, FileDown, Menu, CheckCheck } from "lucide-react";
+import { Send, Loader2, Printer, FileDown, Menu, CheckCheck, Pencil } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
 import { PrintReport } from "@/components/PrintReport";
 import { printReport } from "@/lib/print-frame";
@@ -62,6 +62,31 @@ function groupExchanges(msgs: UIMessage[]): Exchange[] {
     }
   }
   return out;
+}
+
+/* ------------------------- answer style (asked before each answer) ------------------------- */
+
+type AnswerStyle = { length: "detailed" | "short" | "summary"; format: "text" | "stickers" | "infographic" | "flowchart" | "visual" };
+const LENGTH_OPTIONS: Array<{ id: AnswerStyle["length"]; label: string; hint: string }> = [
+  { id: "detailed", label: "تفصيلية", hint: "شرح كامل وشامل" },
+  { id: "short", label: "مختصرة", hint: "الأهم في سطور قليلة" },
+  { id: "summary", label: "ملخص", hint: "نقاط سريعة فقط" },
+];
+const FORMAT_OPTIONS: Array<{ id: AnswerStyle["format"]; label: string }> = [
+  { id: "text", label: "📝 نص" },
+  { id: "stickers", label: "🏷️ استيكرات" },
+  { id: "infographic", label: "🧩 إنفوجرافيك" },
+  { id: "flowchart", label: "🔄 فلوتشارت" },
+  { id: "visual", label: "🎨 Visual Learning" },
+];
+const STYLE_KEY = "chat-answer-style";
+const DEFAULT_STYLE: AnswerStyle = { length: "detailed", format: "text" };
+function loadStyle(): AnswerStyle {
+  try {
+    const v = JSON.parse(localStorage.getItem(STYLE_KEY) ?? "null") as Partial<AnswerStyle> | null;
+    if (v && LENGTH_OPTIONS.some((o) => o.id === v.length) && FORMAT_OPTIONS.some((o) => o.id === v.format)) return v as AnswerStyle;
+  } catch { /* storage unavailable */ }
+  return DEFAULT_STYLE;
 }
 
 const TABLE_SEPARATOR = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/gm;
@@ -134,6 +159,10 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     onError: (e) => toast.error(e.message),
   });
   const [input, setInput] = useState("");
+  /** The question waiting for the user to pick how it should be answered (nothing is sent until then). */
+  const [pending, setPending] = useState<string | null>(null);
+  const [choice, setChoice] = useState<AnswerStyle>(DEFAULT_STYLE);
+  useEffect(() => { setChoice(loadStyle()); }, []);
   const [printIds, setPrintIds] = useState<Set<number> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -157,7 +186,7 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, status]);
+  }, [messages, status, pending]);
 
   useEffect(() => { inputRef.current?.focus(); }, [threadId, status]);
   useEffect(() => { if (!input && inputRef.current) inputRef.current.style.height = "auto"; }, [input]);
@@ -191,16 +220,26 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
     });
   }, [autoPrint, runPrint, navigate, threadId, category]);
 
+  /** Step 1: the question is held back and the user is asked how the answer should look. */
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     const text = input.trim();
-    if (!text || isBusy) return;
+    if (!text || isBusy || pending !== null) return;
     setInput("");
+    setPending(text);
+  };
+
+  /** Step 2: send the held question, with the chosen style (or none when skipped). */
+  const confirmAsk = async (style: AnswerStyle | null) => {
+    const text = pending;
+    if (!text) return;
+    setPending(null);
+    if (style) { try { localStorage.setItem(STYLE_KEY, JSON.stringify(style)); } catch { /* ignore */ } }
     // Auto-title with first message
     if (messages.length === 0) {
       await supabase.from("chat_threads").update({ title: text.slice(0, 60) }).eq("id", threadId);
     }
-    await sendMessage({ text });
+    await sendMessage({ text }, style ? { body: { style } } : undefined);
   };
 
   const printSingle = (answerIndex: number, mode: "print" | "pdf" = "print") => void runPrint(printScope(messages, answerIndex), mode);
@@ -350,6 +389,33 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
               </div>
             </div>
           )}
+          {pending !== null && (
+            <div className="wa-options" role="group" aria-label="اختيار شكل الإجابة">
+              <p className="wa-options-q">«{pending.length > 120 ? `${pending.slice(0, 120)}…` : pending}»</p>
+              <p className="wa-options-title">تحب الإجابة تكون إزاي؟</p>
+              <div className="wa-options-label">طول الإجابة</div>
+              <div className="wa-chips">
+                {LENGTH_OPTIONS.map((o) => (
+                  <button key={o.id} type="button" className="wa-chip" aria-pressed={choice.length === o.id} onClick={() => setChoice({ ...choice, length: o.id })} title={o.hint}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <div className="wa-options-label">شكل الإجابة</div>
+              <div className="wa-chips">
+                {FORMAT_OPTIONS.map((o) => (
+                  <button key={o.id} type="button" className="wa-chip" aria-pressed={choice.format === o.id} onClick={() => setChoice({ ...choice, format: o.id })}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <div className="wa-options-actions">
+                <button type="button" className="wa-options-go" onClick={() => void confirmAsk(choice)}>ابدأ الإجابة</button>
+                <button type="button" className="wa-options-skip" onClick={() => void confirmAsk(null)}>تخطي</button>
+                <button type="button" className="wa-options-skip" onClick={() => { setInput(pending); setPending(null); }}><Pencil className="size-3.5" /> تعديل السؤال</button>
+              </div>
+            </div>
+          )}
           {error && <div className="wa-day" style={{ color: "#ef4444" }}>{error.message}</div>}
         </div>
       </div>
@@ -370,9 +436,9 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
           placeholder="اكتب رسالتك..."
           rows={1}
           className="wa-input"
-          disabled={isBusy}
+          disabled={isBusy || pending !== null}
         />
-        <button type="submit" className="wa-send" disabled={isBusy || !input.trim()} aria-label="إرسال">
+        <button type="submit" className="wa-send" disabled={isBusy || pending !== null || !input.trim()} aria-label="إرسال">
           {isBusy ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-5 -scale-x-100" />}
         </button>
       </form>
