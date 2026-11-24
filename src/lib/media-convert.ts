@@ -3,6 +3,7 @@
 // Pure text helpers live in ./convert-text (unit-testable, no DOM).
 
 import { normalizePeak, normalizeForSpeech, polishClip, splitSegments, timeStretch, type Segment, type SectionInput } from "./convert-speech";
+import { installResilientFetch, friendlyNetworkError } from "./resilient-fetch";
 import { pdfItemsToText, repairSpacedLetters, looksLetterSpaced, type PdfTextItem } from "./pdf-text";
 import {
   clean, decodeText, detectKind, dominantScript, hasArabic, htmlToText, looksGarbled, markdownToText, parseCsv, parseDocx,
@@ -221,6 +222,7 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
   };
 
   let fallbackCtx: AudioContext | null = null;
+  const uninstallFetch = installResilientFetch();
   try {
     const tts = await import("@mintplex-labs/piper-tts-web");
     const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
@@ -325,7 +327,12 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
     });
     normalizePeak(pcm);
     return { wav: encodeWav(pcm, rate), pcm, rate, duration: total / rate, timings };
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw e;
+    const msg = friendlyNetworkError(e);
+    throw msg === (e as Error)?.message ? e : new Error(msg);
   } finally {
+    uninstallFetch();
     restoreThreads();
     (fallbackCtx as AudioContext | null)?.close().catch(() => {});
   }

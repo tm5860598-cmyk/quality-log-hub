@@ -2,11 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ClipboardPaste, Clock, Download, Film, Loader2, RefreshCw,
-  ShieldCheck, Sparkles, Subtitles, Trash2, Upload, Volume2, X,
+  ShieldCheck, Sparkles, Subtitles, Trash2, Upload, Volume2, X, CloudUpload, FolderOpen, Smartphone,
 } from "lucide-react";
 import type { EnVoice, SpeechResult, ThemeKey, Voice, VideoQuality } from "@/lib/media-convert";
 import { ACCEPT, KIND_LABEL, buildSrt, detectKind, estimateSeconds, formatBytes, formatDuration, hasArabic, type FileKind } from "@/lib/convert-text";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { askNotificationPermission, listSaved, removeSaved, saveToDevice, saveToProject, savedUrl, signalDone, type SavedFile } from "@/lib/converted-store";
 import type { AnalyzeMode } from "@/lib/convert-analyze";
 import { Card, Field, KindBadge, Segmented, StepPill, Switch } from "@/components/convert/parts";
 
@@ -71,7 +73,11 @@ function ConvertPage() {
   const [audio, setAudio] = useState<{ url: string; sp: SpeechResult; key: string } | null>(null);
   const [script, setScript] = useState<{ key: string; sections: { label: string; text: string }[] } | null>(null);
   const [notice, setNotice] = useState("");
-  const [video, setVideo] = useState<{ url: string; ext: string; size: number; key: string } | null>(null);
+  const [video, setVideo] = useState<{ url: string; ext: string; size: number; key: string; blob: Blob } | null>(null);
+  const [savingKey, setSavingKey] = useState("");
+  const [savedOpen, setSavedOpen] = useState(false);
+  const [saved, setSaved] = useState<SavedFile[] | null>(null);
+  const [savedErr, setSavedErr] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const urls = useRef<string[]>([]);
   const secsRef = useRef<Sec[]>([]);
@@ -177,8 +183,9 @@ function ConvertPage() {
     finally { setStage("idle"); abortRef.current = null; }
   }
 
-  async function makeAudio(): Promise<SpeechResult | null> {
+  async function makeAudio(wantVideo = false): Promise<SpeechResult | null> {
     if (!hasText) return null;
+    askNotificationPermission();
     const m = await import("@/lib/media-convert");
     const key = audioKey;
     const sp = await run("audio", async (sig) => {
@@ -205,17 +212,18 @@ function ConvertPage() {
       }
       return m.synthesize(m.splitSegments(input), settings.voice, sig, onP, { pause: settings.pause, speed: settings.speed, enVoice: settings.enVoice });
     });
-    if (sp) { drop(audio?.url); setAudio({ url: track(sp.wav), sp, key }); }
+    if (sp) { drop(audio?.url); setAudio({ url: track(sp.wav), sp, key }); if (!wantVideo) announceDone("audio", sp.wav, `${title}.wav`); }
     return sp;
   }
 
   async function makeVideo() {
-    const sp = audio && !audioStale ? audio.sp : await makeAudio();
+    askNotificationPermission();
+    const sp = audio && !audioStale ? audio.sp : await makeAudio(true);
     if (!sp) return;
     const m = await import("@/lib/media-convert");
     const key = videoKey;
     const r = await run("video", (sig) => m.renderVideo(sp, { ratio: settings.ratio, title, theme: settings.theme, quality: settings.quality }, sig, onP));
-    if (r) { drop(video?.url); setVideo({ url: track(r.blob), ext: r.ext, size: r.blob.size, key }); }
+    if (r) { drop(video?.url); setVideo({ url: track(r.blob), ext: r.ext, size: r.blob.size, key, blob: r.blob }); announceDone("video", r.blob, `${title}.${r.ext}`); }
   }
 
   const save = (blob: Blob, name: string) => {
@@ -224,6 +232,41 @@ function ConvertPage() {
     a.href = u; a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(u), 4000);
   };
+  /** Finished-notice with the two delivery options, shown as a toast (and a system notification if the tab is hidden). */
+  const announceDone = (kind: "audio" | "video", blob: Blob, fileName: string) => {
+    const what = kind === "audio" ? "الصوت" : "الفيديو";
+    signalDone(`تم توليد ${what} ✓`, "الملف جاهز للتحميل أو الحفظ على المشروع.");
+    toast.success(`تم الانتهاء من توليد ${what} ✓`, {
+      description: "حمّله على جهازك أو احفظه على المشروع.",
+      duration: 20000,
+      action: { label: "تحميل", onClick: () => void deliver(blob, fileName) },
+      cancel: { label: "حفظ على المشروع", onClick: () => void keep(kind, blob, fileName) },
+    });
+  };
+
+  async function deliver(blob: Blob, fileName: string) {
+    try {
+      const r = await saveToDevice(blob, fileName);
+      if (r === "downloaded") toast.success("بدأ التحميل على جهازك");
+    } catch (e: any) { toast.error(e?.message || "تعذّر التحميل"); }
+  }
+
+  async function keep(kind: string, blob: Blob, fileName: string) {
+    setSavingKey(kind);
+    const id = toast.loading("جارٍ الحفظ على المشروع…");
+    try {
+      const f = await saveToProject(blob, fileName);
+      toast.success("تم الحفظ على المشروع ✓", { id, description: f.name });
+      setSaved((a) => (a ? [f, ...a] : a));
+    } catch (e: any) { toast.error(e?.message || "تعذّر الحفظ", { id }); }
+    finally { setSavingKey(""); }
+  }
+
+  async function loadSaved() {
+    setSavedErr("");
+    try { setSaved(await listSaved()); } catch (e: any) { setSavedErr(e?.message || "تعذّر تحميل القائمة"); setSaved([]); }
+  }
+
   const exportSrt = () => audio && save(new Blob([buildSrt(audio.sp.timings.map((t) => ({ text: t.seg.text, start: t.start, end: t.end })))], { type: "text/plain;charset=utf-8" }), `${title}.srt`);
   const exportTxt = () => save(new Blob([enabled.map((s) => `${s.title}\n${s.text}`).join("\n\n")], { type: "text/plain;charset=utf-8" }), `${title}.txt`);
 
@@ -471,7 +514,7 @@ function ConvertPage() {
 
         {/* 4. results */}
         {(audio || video) && (
-          <Card title="٤. النتائج" subtitle="الملفات جاهزة للتحميل — لا تُرفع لأي خادم">
+          <Card title="٤. النتائج" subtitle="الملفات جاهزة — حمّلها على جهازك أو احفظها على المشروع">
             {audio && (
               <div className="space-y-3 rounded-xl border bg-background p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -489,7 +532,8 @@ function ConvertPage() {
                   </details>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => save(audio.sp.wav, `${title}.wav`)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><Download className="size-4" /> تحميل الصوت (WAV)</button>
+                  <button onClick={() => void deliver(audio.sp.wav, `${title}.wav`)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><Smartphone className="size-4" /> تحميل على جهازك (WAV)</button>
+                  <button disabled={savingKey === "audio"} onClick={() => void keep("audio", audio.sp.wav, `${title}.wav`)} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted/50 disabled:opacity-50"><CloudUpload className="size-4" /> حفظ على المشروع</button>
                   <button onClick={exportSrt} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted/50"><Subtitles className="size-4" /> الترجمة (SRT)</button>
                 </div>
               </div>
@@ -503,11 +547,39 @@ function ConvertPage() {
                   {videoStale && <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">النص أو الإعدادات تغيّرت — أعد التوليد</span>}
                 </div>
                 <video controls playsInline src={video.url} className={`mx-auto rounded-xl bg-black ${settings.ratio === "9:16" ? "max-h-[70vh]" : "w-full"}`} />
-                <a href={video.url} download={`${title}.${video.ext}`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><Download className="size-4" /> تحميل الفيديو</a>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => void deliver(video.blob, `${title}.${video.ext}`)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><Smartphone className="size-4" /> تحميل على جهازك</button>
+                  <button disabled={savingKey === "video"} onClick={() => void keep("video", video.blob, `${title}.${video.ext}`)} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted/50 disabled:opacity-50"><CloudUpload className="size-4" /> حفظ على المشروع</button>
+                </div>
               </div>
             )}
           </Card>
         )}
+
+        <section className="rounded-2xl border bg-card p-4 shadow-sm">
+          <button type="button" onClick={() => { const o = !savedOpen; setSavedOpen(o); if (o && saved === null) void loadSaved(); }} aria-expanded={savedOpen}
+            className="flex w-full items-center gap-2 text-start text-sm font-bold">
+            <FolderOpen className="size-5 text-primary" /> <span className="flex-1">الملفات المحفوظة على المشروع</span>
+            <ChevronDown className={`size-4 transition-transform ${savedOpen ? "rotate-180" : ""}`} />
+          </button>
+          {savedOpen && (
+            <div className="mt-3 space-y-2">
+              {saved === null && <p className="text-sm text-muted-foreground">جارٍ التحميل…</p>}
+              {savedErr && <p className="text-sm text-destructive">{savedErr}</p>}
+              {saved?.length === 0 && !savedErr && <p className="text-sm text-muted-foreground">لا توجد ملفات محفوظة بعد.</p>}
+              {saved?.map((f) => (
+                <div key={f.path} className="flex items-center gap-2 rounded-xl border bg-background p-2.5 text-sm">
+                  <span className="min-w-0 flex-1 truncate font-semibold" dir="auto">{f.name}</span>
+                  {f.size > 0 && <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(f.size)}</span>}
+                  <button type="button" aria-label="تحميل" className="rounded-lg p-1.5 hover:bg-muted"
+                    onClick={async () => { try { window.location.assign(await savedUrl(f.path, f.name)); } catch (e: any) { toast.error(e?.message || "تعذّر التحميل"); } }}><Download className="size-4" /></button>
+                  <button type="button" aria-label="حذف" className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10"
+                    onClick={async () => { try { await removeSaved(f.path); setSaved((a) => a?.filter((x) => x.path !== f.path) ?? a); toast.success("تم الحذف"); } catch (e: any) { toast.error(e?.message || "تعذّر الحذف"); } }}><Trash2 className="size-4" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <p className="px-1 text-center text-xs leading-6 text-muted-foreground">
           أول مرة تُحمَّل نماذج الصوت (والتعرف الضوئي عند الحاجة) من الإنترنت ثم تُحفظ في المتصفح. الملفات والنصوص لا تغادر جهازك أبدًا.
