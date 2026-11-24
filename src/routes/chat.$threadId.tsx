@@ -147,16 +147,37 @@ function ChatInner({ threadId, initial, initialTimes, token, category, autoPrint
   autoPrint: boolean;
 }) {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const transport = new DefaultChatTransport({
     api: "/api/chat",
     headers: { Authorization: `Bearer ${token}` },
     body: { threadId },
+    // Always send the CURRENT session token. A token captured at page load goes stale (expiry / refresh / revoked
+    // session) and the server answers 401 "Unauthorized": refresh the session once and retry before giving up.
+    fetch: async (input, init) => {
+      const call = (accessToken: string | undefined) => {
+        const h = new Headers(init?.headers);
+        if (accessToken) h.set("Authorization", `Bearer ${accessToken}`);
+        return fetch(input, { ...init, headers: h });
+      };
+      const { data } = await supabase.auth.getSession();
+      let res = await call(data.session?.access_token ?? token);
+      if (res.status === 401) {
+        const r = await supabase.auth.refreshSession();
+        if (r.data.session) res = await call(r.data.session.access_token);
+      }
+      return res;
+    },
   });
   const { messages, sendMessage, status, error } = useChat({
     id: threadId,
     messages: initial,
     transport,
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      if (/unauthori[sz]ed/i.test(e.message)) {
+        toast.error("انتهت جلسة الدخول — سجّل الدخول من جديد ثم أعد السؤال", { duration: 15000, action: { label: "تسجيل الدخول", onClick: () => void signOut() } });
+      } else toast.error(e.message);
+    },
   });
   const [input, setInput] = useState("");
   /** The question waiting for the user to pick how it should be answered (nothing is sent until then). */
