@@ -3,6 +3,7 @@
 // Pure text helpers live in ./convert-text (unit-testable, no DOM).
 
 import { normalizePeak, normalizeForSpeech, polishClip, splitSegments, timeStretch, type Segment, type SectionInput } from "./convert-speech";
+import { pdfItemsToText, repairSpacedLetters, looksLetterSpaced, type PdfTextItem } from "./pdf-text";
 import {
   clean, decodeText, detectKind, dominantScript, hasArabic, htmlToText, looksGarbled, markdownToText, parseCsv, parseDocx,
   parseOpenDocument, parsePptx, parseXlsx, subtitleToText, tabularToSpeech,
@@ -82,9 +83,9 @@ async function extractPdf(bytes: Uint8Array, signal: AbortSignal, onP: Progress,
     let text = "";
     if (!opts.forceOcr) {
       const tc = await page.getTextContent();
-      text = clean(tc.items.map((it: any) => (it.str ?? "") + (it.hasEOL ? "\n" : " ")).join(""));
+      text = clean(repairSpacedLetters(pdfItemsToText(tc.items as PdfTextItem[])));
     }
-    if (opts.forceOcr || text.length < 20 || looksGarbled(text)) {
+    if (opts.forceOcr || text.length < 20 || looksGarbled(text) || looksLetterSpaced(text)) {
       // Scanned page or broken font mapping -> local OCR
       const base = page.getViewport({ scale: 1 });
       const scale = Math.min(2.2, 2400 / Math.max(base.width, base.height));
@@ -145,7 +146,7 @@ export async function extractFile(file: File, signal: AbortSignal, onP: Progress
       sections = [{ title: "النص", text }];
     }
   }
-  sections = sections.map((s) => ({ ...s, text: clean(s.text) })).filter((s) => s.text.length > 0);
+  sections = sections.map((s) => ({ ...s, text: clean(repairSpacedLetters(s.text)) })).filter((s) => s.text.length > 0);
   if (!sections.length) throw new Error("لم يتم العثور على نص داخل الملف");
   return sections;
 }
