@@ -31,9 +31,9 @@ export const Route = createFileRoute("/convert")({
 type Stage = "idle" | "extract" | "audio" | "video";
 type Item = { id: string; name: string; size: number; kind: FileKind | "paste"; status: "reading" | "done" | "error"; error?: string; file?: File; count?: number };
 type Sec = { id: string; itemId: string; fileName: string; title: string; text: string; enabled: boolean };
-type Settings = { analyze: AnalyzeMode; voice: Voice; enVoice: EnVoice; speed: number; pause: number; ratio: "16:9" | "9:16"; theme: ThemeKey; quality: VideoQuality; forceOcr: boolean; includeNotes: boolean };
+type Settings = { analyze: AnalyzeMode; voice: Voice; enVoice: EnVoice; speed: number; pause: number; ratio: "16:9" | "9:16"; theme: ThemeKey; quality: VideoQuality; forceOcr: boolean; includeNotes: boolean; tashkeel: boolean };
 
-const DEFAULTS: Settings = { analyze: "explain", voice: "auto", enVoice: "hfc_female", speed: 1, pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false };
+const DEFAULTS: Settings = { analyze: "explain", voice: "auto", enVoice: "hfc_female", speed: 1, pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false, tashkeel: true };
 const STORE = "convert-settings-v1";
 const MAX_CHARS = 200_000;
 
@@ -100,7 +100,7 @@ function ConvertPage() {
   const multi = items.filter((i) => i.status === "done").length > 1;
   const sectionInputs = () => enabled.map((s) => ({ label: multi ? `${s.fileName.slice(0, 18)} • ${s.title}` : s.title, text: s.text }));
   const textKey = hash(enabled.map((s) => s.text).join("\u0001"));
-  const audioKey = `${textKey}|${settings.analyze}|${settings.voice}|${settings.enVoice}|${settings.speed}|${settings.pause}|${multi}`;
+  const audioKey = `${textKey}|${settings.analyze}|${settings.tashkeel}|${settings.voice}|${settings.enVoice}|${settings.speed}|${settings.pause}|${multi}`;
   const title = videoTitle.trim() || baseOf(items.find((i) => i.status === "done")?.name ?? "تحويل الملفات");
   const videoKey = `${audioKey}|${settings.ratio}|${settings.theme}|${settings.quality}|${title}`;
   const audioStale = !!audio && audio.key !== audioKey;
@@ -192,7 +192,7 @@ function ConvertPage() {
       setNotice("");
       let input = sectionInputs();
       if (settings.analyze !== "off") {
-        const akey = `${textKey}|${settings.analyze}|${multi}`;
+        const akey = `${textKey}|${settings.analyze}|${settings.tashkeel}|${multi}`;
         if (script?.key === akey) input = script.sections;
         else {
           try {
@@ -200,7 +200,7 @@ function ConvertPage() {
             const token = data.session?.access_token;
             if (!token) throw new Error("سجّل الدخول لاستخدام تحليل النص");
             const { analyzeText } = await import("@/lib/convert-analyze");
-            const r = await analyzeText(input, settings.analyze, token, sig, onP);
+            const r = await analyzeText(input, settings.analyze, token, sig, onP, settings.tashkeel);
             input = r.sections;
             setScript({ key: akey, sections: r.sections });
             if (r.skippedChars) setNotice(`حُلّل الجزء الأول من الملف فقط للحفاظ على الرصيد، وقُرئ الباقي (${r.skippedChars.toLocaleString("ar-EG")} حرف) كما هو.`);
@@ -468,6 +468,10 @@ function ConvertPage() {
                 <Segmented label="تحليل النص" value={settings.analyze} onChange={(v) => set("analyze", v)} disabled={busy}
                   options={[{ value: "explain", label: "فهم وإعادة صياغة" }, { value: "summary", label: "ملخص" }, { value: "off", label: "كما هو" }]} />
               </Field>
+              {settings.analyze !== "off" && (
+                <Switch checked={settings.tashkeel} onChange={(v) => set("tashkeel", v)} label="تشكيل النص العربي (نطق أدق وأطبع)"
+                  hint="الصوت العربي مدرَّب على نص مُشكَّل؛ بدون تشكيل يخمّن الحركات فيبدو الكلام غير طبيعي. يتم داخل نفس طلب التحليل بدون طلبات إضافية، ولا يظهر التشكيل على شرائح الفيديو." />
+              )}
               <Field label="لغة الصوت" hint={settings.voice === "auto" ? "يختار الصوت المناسب لكل فقرة حسب لغتها — مناسب للملفات المختلطة." : "الصوت العربي موحّد للفصحى واللهجة المصرية."}>
                 <Segmented label="لغة الصوت" value={settings.voice} onChange={(v) => set("voice", v)} disabled={busy}
                   options={[{ value: "auto", label: "تلقائي" }, { value: "ar", label: "عربي" }, { value: "en", label: "English" }]} />

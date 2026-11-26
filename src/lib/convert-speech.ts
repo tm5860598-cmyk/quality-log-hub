@@ -237,6 +237,9 @@ function normalizeEnglish(text: string): string {
   return t;
 }
 
+/** Removes Arabic vowel marks (harakat): used for on-screen text and subtitles, the voice keeps them. */
+export const stripTashkeel = (t: string) => t.replace(/[\u064B-\u065F\u0670]/g, "");
+
 /** Final text sent to the voice for one unit: symbols removed, numbers/units spoken, heading dot added. */
 export function normalizeForSpeech(raw: string, lang: Lang = dominantScript(raw)): string {
   let t = speakable(lang === "ar" ? normalizeArabic(raw) : normalizeEnglish(raw));
