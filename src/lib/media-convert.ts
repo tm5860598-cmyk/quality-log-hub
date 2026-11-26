@@ -2,7 +2,7 @@
 // No AI API / credits: pdf.js, fflate, tesseract.js (OCR wasm), Piper TTS (wasm), Canvas + MediaRecorder.
 // Pure text helpers live in ./convert-text (unit-testable, no DOM).
 
-import { normalizePeak, normalizeForSpeech, polishClip, splitSegments, timeStretch, type Segment, type SectionInput } from "./convert-speech";
+import { normalizePeak, normalizeForSpeech, polishClip, splitSegments, stripTashkeel, timeStretch, type Segment, type SectionInput } from "./convert-speech";
 import { installResilientFetch, friendlyNetworkError } from "./resilient-fetch";
 import { pdfItemsToText, repairSpacedLetters, looksLetterSpaced, type PdfTextItem } from "./pdf-text";
 import {
@@ -318,9 +318,9 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
       const start = off / rate, end = (off + p.length + gaps[i]) / rate;
       const prev = timings[timings.length - 1];
       if (prev && prev.seg.section === segs[i].section && prev.group === segs[i].group) {
-        prev.seg.text += " " + segs[i].text; prev.end = end; // same slide: extend it
+        prev.seg.text += " " + stripTashkeel(segs[i].text); prev.end = end; // same slide: extend it
       } else {
-        timings.push({ seg: { text: segs[i].text, label: segs[i].label, section: segs[i].section }, start, end, group: segs[i].group });
+        timings.push({ seg: { text: stripTashkeel(segs[i].text), label: segs[i].label, section: segs[i].section }, start, end, group: segs[i].group });
       }
       off += p.length + gaps[i];
       pcms[i] = null; // free each part after merging

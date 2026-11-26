@@ -16,6 +16,18 @@ const COMMON =
   "(9) إن كان النص المستخرج مقطّعًا إلى حروف أو أجزاء كلمات متفرقة (خلل استخراج) فأعد تجميعها إلى كلمات وجمل سليمة مفهومة قبل الكتابة. " +
   "(10) أخرج النص النهائي فقط، بلا مقدمة ولا تعليق.";
 
+/** Piper's Arabic voice was trained on fully vowelled text: without harakat it guesses the vowels and sounds unnatural. */
+const TASHKEEL =
+  " (11) شكّل كل كلمة عربية في النص النهائي تشكيلًا كاملًا ودقيقًا (فتحة وضمة وكسرة وسكون وشدة وتنوين) وفق قواعد النحو والنطق، " +
+  "بما في ذلك حرف آخر الكلمة بحسب موقعها في الجملة، ولا تُشكّل الكلمات الإنجليزية. اكتب الأرقام بالحروف العربية مُشكَّلة.";
+
+/** Spoken Egyptian Arabic instead of formal Arabic: easier to follow when listened to. */
+const EGYPTIAN =
+  " استثناء من القاعدة (1): اكتب النص العربي بالعامية المصرية البسيطة المفهومة كما يشرحها مهندس مصري لزميله بصوت عالٍ " +
+  "(مثل: ده، دي، إزاي، عشان، لازم، بيعمل، مفيش، كده)، بجمل قصيرة وواضحة، وأبقِ المصطلحات الفنية والأسماء والأرقام كما هي دون تغيير المعنى.";
+const TASHKEEL_EG =
+  " (11) شكّل الكلمات العربية تشكيلًا يطابق النطق المصري كما تُنطق فعلًا (وليس إعراب الفصحى)، مع السكون عند حذف الحركة، ولا تُشكّل الكلمات الإنجليزية، واكتب الأرقام بالحروف المصرية مُشكَّلة.";
+
 const MODES: Record<string, string> = {
   explain:
     COMMON + " المطلوب: أعد صياغة كل المحتوى بوضوح وتسلسل منطقي كأنك تشرحه لمستمع، مع الإبقاء على كل الأرقام والأسماء والنتائج المهمة.",
@@ -27,11 +39,13 @@ export const Route = createFileRoute("/api/analyze-text")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { text, mode } = (await request.json().catch(() => ({}))) as { text?: string; mode?: string };
+        const { text, mode, diacritize, dialect } = (await request.json().catch(() => ({}))) as { text?: string; mode?: string; diacritize?: boolean; dialect?: string };
         if (typeof text !== "string" || !text.trim()) return new Response("Text required", { status: 400 });
         if (text.length > MAX_INPUT) return new Response("Text too long", { status: 413 });
-        const system = MODES[mode ?? "explain"];
-        if (!system) return new Response("Bad mode", { status: 400 });
+        const base = MODES[mode ?? "explain"];
+        if (!base) return new Response("Bad mode", { status: 400 });
+        const egyptian = dialect === "egyptian";
+        const system = base + (egyptian ? EGYPTIAN : "") + (diacritize ? (egyptian ? TASHKEEL_EG : TASHKEEL) : "");
 
         const authHeader = request.headers.get("authorization") ?? "";
         const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
