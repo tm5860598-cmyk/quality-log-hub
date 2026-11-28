@@ -33,7 +33,7 @@ type Item = { id: string; name: string; size: number; kind: FileKind | "paste"; 
 type Sec = { id: string; itemId: string; fileName: string; title: string; text: string; enabled: boolean };
 type Settings = { analyze: AnalyzeMode; voice: Voice; enVoice: EnVoice; speed: number; pause: number; ratio: "16:9" | "9:16"; theme: ThemeKey; quality: VideoQuality; forceOcr: boolean; includeNotes: boolean; tashkeel: boolean; dialect: "formal" | "egyptian" };
 
-const DEFAULTS: Settings = { analyze: "explain", voice: "auto", enVoice: "hfc_female", speed: 1, pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false, tashkeel: true, dialect: "egyptian" };
+const DEFAULTS: Settings = { analyze: "explain", voice: "auto", enVoice: "hfc_female", speed: 1, pause: 0.4, ratio: "16:9", theme: "ocean", quality: "standard", forceOcr: false, includeNotes: false, tashkeel: true, dialect: "formal" };
 const STORE = "convert-settings-v1";
 const MAX_CHARS = 200_000;
 
@@ -104,7 +104,7 @@ function ConvertPage() {
   const title = videoTitle.trim() || baseOf(items.find((i) => i.status === "done")?.name ?? "تحويل الملفات");
   const videoKey = `${audioKey}|${settings.ratio}|${settings.theme}|${settings.quality}|${title}`;
   const audioStale = !!audio && audio.key !== audioKey;
-  const videoStale = !!video && video.key !== videoKey;
+  const videoStale = !!video && video.key !== videoKey && video.key !== videoKey + "|silent";
   const hasText = enabled.length > 0;
   const step = video || audio ? 4 : hasText ? 3 : items.length ? 2 : 1;
 
@@ -214,6 +214,39 @@ function ConvertPage() {
     });
     if (sp) { drop(audio?.url); setAudio({ url: track(sp.wav), sp, key }); if (!wantVideo) announceDone("audio", sp.wav, `${title}.wav`); }
     return sp;
+  }
+
+  /** Silent explainer video: AI-rewritten formal text on slides, no narration/TTS. */
+  async function makeSilentVideo() {
+    if (!hasText) return;
+    askNotificationPermission();
+    const m = await import("@/lib/media-convert");
+    const key = videoKey + "|silent";
+    const r = await run("video", async (sig) => {
+      setNotice("");
+      let input = sectionInputs();
+      if (settings.analyze !== "off") {
+        const akey = `${textKey}|${settings.analyze}|silent|${multi}`;
+        if (script?.key === akey) input = script.sections;
+        else {
+          try {
+            const { data } = await supabase.auth.getSession();
+            const token = data.session?.access_token;
+            if (!token) throw new Error("سجّل الدخول لاستخدام تحليل النص");
+            const { analyzeText } = await import("@/lib/convert-analyze");
+            const a = await analyzeText(input, settings.analyze, token, sig, onP, false, "formal");
+            input = a.sections;
+            setScript({ key: akey, sections: a.sections });
+          } catch (e: any) {
+            if (e?.name === "AbortError") throw e;
+            setNotice(`${e?.message || "تعذّر تحليل النص"} — عُرض النص كما هو.`);
+          }
+        }
+      }
+      const sp = m.planSilent(m.splitSegments(input), settings.speed);
+      return m.renderVideo(sp, { ratio: settings.ratio, title, theme: settings.theme, quality: settings.quality, silent: true }, sig, onP);
+    });
+    if (r) { drop(video?.url); setVideo({ url: track(r.blob), ext: r.ext, size: r.blob.size, key, blob: r.blob }); announceDone("video", r.blob, `${title}.${r.ext}`); }
   }
 
   async function makeVideo() {
@@ -607,8 +640,9 @@ function ConvertPage() {
               {enabled.some((s) => hasArabic(s.text)) && settings.voice === "en" && <span className="block text-amber-600 dark:text-amber-400">النص يحتوي عربيًا لكن الصوت المختار إنجليزي</span>}
             </div>
             <div className="flex gap-2">
-              <button disabled={busy} onClick={() => void makeAudio()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"><Volume2 className="size-4" /> توليد الصوت</button>
-              <button disabled={busy} onClick={() => void makeVideo()} className="inline-flex items-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-sm font-bold transition hover:bg-muted disabled:opacity-50"><Film className="size-4" /> توليد الفيديو</button>
+              <button disabled={busy} onClick={() => void makeAudio()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"><Volume2 className="size-4" /> صوت عربي</button>
+              <button disabled={busy} onClick={() => void makeVideo()} className="inline-flex items-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-sm font-bold transition hover:bg-muted disabled:opacity-50"><Film className="size-4" /> فيديو بشرح صوتي</button>
+              <button disabled={busy} onClick={() => void makeSilentVideo()} className="inline-flex items-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-sm font-bold transition hover:bg-muted disabled:opacity-50"><Film className="size-4" /> فيديو شرح بدون صوت</button>
             </div>
           </div>
           {stage === "video" && <p className="pb-2 text-center text-[11px] text-muted-foreground">يُسجَّل الفيديو بالسرعة الطبيعية — اترك هذه الصفحة مفتوحة حتى ينتهي.</p>}

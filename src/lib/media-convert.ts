@@ -342,7 +342,7 @@ export async function synthesize(segs: Segment[], voice: Voice, signal: AbortSig
 
 export type ThemeKey = "ocean" | "midnight" | "paper" | "sunset";
 export type VideoQuality = "standard" | "hd";
-export type VideoOptions = { ratio: "16:9" | "9:16"; title: string; theme: ThemeKey; quality: VideoQuality };
+export type VideoOptions = { ratio: "16:9" | "9:16"; title: string; theme: ThemeKey; quality: VideoQuality; silent?: boolean };
 
 export const THEMES: Record<ThemeKey, { name: string; bg: [string, string]; text: string; accent: string; sub: string; bar: string }> = {
   ocean: { name: "أزرق مخضر", bg: ["#0f2a44", "#134e4a"], text: "#ffffff", accent: "#2dd4bf", sub: "#99f6e4", bar: "rgba(255,255,255,.18)" },
@@ -390,6 +390,27 @@ export function pickVideoMime(skip = 0): { mime: string; ext: string } {
   return ok[skip] ?? (skip === ok.length ? { mime: "", ext: "webm" } : null as never);
 }
 
+/** Silent video: no TTS. Slide timings are estimated from reading speed. */
+export function planSilent(segs: Segment[], speed = 1): SpeechResult {
+  const timings: Timing[] = [];
+  let t = 0;
+  for (const sg of segs) {
+    const text = stripTashkeel(sg.text);
+    const words = text.split(/\s+/).filter(Boolean).length;
+    if (!words) continue;
+    const dur = Math.max(3, (words / 2.2 + 0.8) / Math.max(0.5, speed));
+    const prev = timings[timings.length - 1];
+    if (prev && prev.seg.section === sg.section && prev.group === sg.group) {
+      prev.seg.text += " " + text; prev.end += dur; t += dur;
+    } else {
+      timings.push({ seg: { text, label: sg.label, section: sg.section }, start: t, end: t + dur, group: sg.group });
+      t += dur;
+    }
+  }
+  if (!timings.length) throw new Error("لا يوجد نص قابل للعرض في الأقسام المحددة");
+  return { wav: new Blob([], { type: "audio/wav" }), pcm: new Int16Array(0), rate: 22050, duration: t, timings };
+}
+
 const LEAD = 2.5; // seconds of title slide before the narration starts
 
 /** Tries each supported container/codec in turn (the first one a browser lists can still fail while recording). */
@@ -417,13 +438,15 @@ async function renderVideoOnce(sp: SpeechResult, o: VideoOptions, signal: AbortS
   const ac = new AudioContext(); // device rate (44.1/48 kHz): encoders reject odd rates like 22.05 kHz
   await Promise.race([ac.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
   const dest = ac.createMediaStreamDestination();
-  const audioBuf = ac.createBuffer(1, sp.pcm.length, sp.rate);
-  const ch = audioBuf.getChannelData(0);
-  for (let i = 0; i < sp.pcm.length; i++) ch[i] = sp.pcm[i] / 0x7fff;
   const srcNode = ac.createBufferSource();
-  srcNode.buffer = audioBuf;
-  srcNode.connect(dest);
-  const stream = new MediaStream([...canvas.captureStream(FPS).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  if (!o.silent) {
+    const audioBuf = ac.createBuffer(1, sp.pcm.length, sp.rate);
+    const ch = audioBuf.getChannelData(0);
+    for (let i = 0; i < sp.pcm.length; i++) ch[i] = sp.pcm[i] / 0x7fff;
+    srcNode.buffer = audioBuf;
+    srcNode.connect(dest);
+  }
+  const stream = new MediaStream([...canvas.captureStream(FPS).getVideoTracks(), ...(o.silent ? [] : dest.stream.getAudioTracks())]);
   const { mime, ext } = pickVideoMime(attempt >> 1);
   let rec: MediaRecorder;
   try { rec = new MediaRecorder(stream, mime ? (attempt % 2 === 0 ? { mimeType: mime, videoBitsPerSecond: o.quality === "hd" ? 2_500_000 : 1_200_000 } : { mimeType: mime }) : undefined); }
@@ -505,7 +528,7 @@ async function renderVideoOnce(sp: SpeechResult, o: VideoOptions, signal: AbortS
   draw(0);
   return await new Promise<{ blob: Blob; ext: string }>((resolve, reject) => {
     const finish = () => { clearInterval(iv); stream.getTracks().forEach((t) => t.stop()); ac.close().catch(() => {}); };
-    const onAbort = () => { try { srcNode.stop(); } catch {} ; rec.onstop = null; if (rec.state !== "inactive") rec.stop(); finish(); reject(new DOMException("تم إلغاء العملية", "AbortError")); };
+    const onAbort = () => { try { if (!o.silent) srcNode.stop(); } catch {} ; rec.onstop = null; if (rec.state !== "inactive") rec.stop(); finish(); reject(new DOMException("تم إلغاء العملية", "AbortError")); };
     signal.addEventListener("abort", onAbort, { once: true });
     rec.onstop = () => { finish(); signal.removeEventListener("abort", onAbort); resolve({ blob: new Blob(chunks, { type: mime.split(";")[0] || "video/webm" }), ext }); };
     rec.onerror = (ev: any) => { finish(); signal.removeEventListener("abort", onAbort); reject(new Error(`فشل تسجيل الفيديو${ev?.error?.message ? ` (${ev.error.message})` : ""}`)); };
@@ -523,9 +546,10 @@ async function renderVideoOnce(sp: SpeechResult, o: VideoOptions, signal: AbortS
       if (t >= total + 0.5 || wall >= total + 3) stopRec();
     };
     const iv = setInterval(frame, 1000 / FPS);
-    srcNode.onended = () => setTimeout(stopRec, 300);
+    if (o.silent) setTimeout(stopRec, (total + 0.3) * 1000);
+    else srcNode.onended = () => setTimeout(stopRec, 300);
     rec.start(1000);
-    srcNode.start(ac.currentTime + LEAD); // narration begins after the title slide
+    if (!o.silent) srcNode.start(ac.currentTime + LEAD); // narration begins after the title slide
     ac.resume().catch(() => {});
   });
 }
