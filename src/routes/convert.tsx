@@ -225,17 +225,19 @@ function ConvertPage() {
     const r = await run("video", async (sig) => {
       setNotice("");
       let input = sectionInputs();
+      let analyzed = false;
       if (settings.analyze !== "off") {
-        const akey = `${textKey}|${settings.analyze}|silent|${multi}`;
-        if (script?.key === akey) input = script.sections;
+        const akey = `${textKey}|${settings.analyze}|slides|${multi}`;
+        if (script?.key === akey) { input = script.sections; analyzed = true; }
         else {
           try {
             const { data } = await supabase.auth.getSession();
             const token = data.session?.access_token;
             if (!token) throw new Error("سجّل الدخول لاستخدام تحليل النص");
             const { analyzeText } = await import("@/lib/convert-analyze");
-            const a = await analyzeText(input, settings.analyze, token, sig, onP, false, "formal");
+            const a = await analyzeText(input, settings.analyze, token, sig, onP, false, "formal", "slides");
             input = a.sections;
+            analyzed = true;
             setScript({ key: akey, sections: a.sections });
           } catch (e: any) {
             if (e?.name === "AbortError") throw e;
@@ -243,7 +245,7 @@ function ConvertPage() {
           }
         }
       }
-      const sp = m.planSilent(m.splitSegments(input), settings.speed);
+      const sp = analyzed ? m.planSlides(input, settings.speed) : m.planSilent(m.splitSegments(input), settings.speed);
       return m.renderVideo(sp, { ratio: settings.ratio, title, theme: settings.theme, quality: settings.quality, silent: true }, sig, onP);
     });
     if (r) { drop(video?.url); setVideo({ url: track(r.blob), ext: r.ext, size: r.blob.size, key, blob: r.blob }); announceDone("video", r.blob, `${title}.${r.ext}`); }

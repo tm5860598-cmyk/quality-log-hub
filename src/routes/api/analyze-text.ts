@@ -28,6 +28,14 @@ const EGYPTIAN =
 const TASHKEEL_EG =
   " (11) شكّل الكلمات العربية تشكيلًا يطابق النطق المصري كما تُنطق فعلًا (وليس إعراب الفصحى)، مع السكون عند حذف الحركة، ولا تُشكّل الكلمات الإنجليزية، واكتب الأرقام بالحروف المصرية مُشكَّلة.";
 
+/** Written slides (silent video): keep enumerations as one "label: text" line each instead of one run-on sentence. */
+const SLIDES =
+  " استثناء من القاعدتين (4) و(6): هذا النص سيُعرض مكتوبًا على شرائح فنسّقه للقراءة البصرية: كل بند أو نقطة أو خطوة أو تعداد " +
+  "(مثل: البند الأول والثاني والثالث، أو الشروط، أو المراحل) في سطر مستقل بصيغة «العنوان: الشرح» " +
+  "(مثال: البند الأول: النطاق — يحدد حدود تطبيق المعيار)، ولا تدمج عدة بنود في جملة واحدة ولا تضعها متجاورة، " +
+  "واكتب سطرًا واحدًا لكل بند دون ترقيم أو رموز، واجعل الشرح بعد النقطتين قصيرًا ومفهومًا من النص نفسه. " +
+  "افصل الموضوعات المختلفة بسطر فارغ، وابدأ كل موضوع بسطر عنوان قصير ينتهي بنقطتين إذا كان تحته بنود.";
+
 const MODES: Record<string, string> = {
   explain:
     COMMON + " المطلوب: أعد صياغة كل المحتوى بوضوح وتسلسل منطقي كأنك تشرحه لمستمع، مع الإبقاء على كل الأرقام والأسماء والنتائج المهمة.",
@@ -39,13 +47,13 @@ export const Route = createFileRoute("/api/analyze-text")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { text, mode, diacritize, dialect } = (await request.json().catch(() => ({}))) as { text?: string; mode?: string; diacritize?: boolean; dialect?: string };
+        const { text, mode, diacritize, dialect, layout } = (await request.json().catch(() => ({}))) as { text?: string; mode?: string; diacritize?: boolean; dialect?: string; layout?: string };
         if (typeof text !== "string" || !text.trim()) return new Response("Text required", { status: 400 });
         if (text.length > MAX_INPUT) return new Response("Text too long", { status: 413 });
         const base = MODES[mode ?? "explain"];
         if (!base) return new Response("Bad mode", { status: 400 });
         const egyptian = dialect === "egyptian";
-        const system = base + (egyptian ? EGYPTIAN : "") + (diacritize ? (egyptian ? TASHKEEL_EG : TASHKEEL) : "");
+        const system = base + (layout === "slides" ? SLIDES : "") + (egyptian ? EGYPTIAN : "") + (diacritize ? (egyptian ? TASHKEEL_EG : TASHKEEL) : "");
 
         const authHeader = request.headers.get("authorization") ?? "";
         const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";

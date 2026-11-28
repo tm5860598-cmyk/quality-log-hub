@@ -35,7 +35,7 @@ export type AnalyzeResult = { sections: SectionInput[]; skippedChars: number };
 /** Sends the batches (sequentially) to /api/analyze-text. Text past the batch cap is read as-is. */
 export async function analyzeText(
   sections: SectionInput[], mode: Exclude<AnalyzeMode, "off">, token: string, signal: AbortSignal,
-  onP: (pct: number, label: string) => void, diacritize = false, dialect: "formal" | "egyptian" = "formal",
+  onP: (pct: number, label: string) => void, diacritize = false, dialect: "formal" | "egyptian" = "formal", layout: "speech" | "slides" = "speech",
 ): Promise<AnalyzeResult> {
   const all = planBatches(sections);
   const use = all.slice(0, MAX_BATCHES);
@@ -46,7 +46,7 @@ export async function analyzeText(
     const res = await fetch("/api/analyze-text", {
       method: "POST", signal,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ text: use[i], mode, diacritize, dialect }),
+      body: JSON.stringify({ text: use[i], mode, diacritize, dialect, layout }),
     });
     if (!res.ok) throw new Error(res.status === 401 ? "سجّل الدخول لاستخدام تحليل النص" : `تعذّر تحليل النص (${res.status})`);
     const j = (await res.json()) as { text?: string };

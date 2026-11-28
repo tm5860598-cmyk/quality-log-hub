@@ -411,6 +411,32 @@ export function planSilent(segs: Segment[], speed = 1): SpeechResult {
   return { wav: new Blob([], { type: "audio/wav" }), pcm: new Int16Array(0), rate: 22050, duration: t, timings };
 }
 
+/** Silent video from already-formatted text: one list item per line is preserved on the slides. */
+export function planSlides(sections: Array<{ label: string; text: string }>, speed = 1): SpeechResult {
+  const timings: Timing[] = [];
+  let t = 0, group = 0;
+  sections.forEach((s, si) => {
+    for (const para of s.text.split(/\n\s*\n/)) {
+      const lines = para.split("\n").map((l) => stripTashkeel(l).trim()).filter(Boolean);
+      let cur: string[] = [], chars = 0;
+      const flush = () => {
+        if (!cur.length) return;
+        const words = cur.join(" ").split(/\s+/).length;
+        const dur = Math.max(3, (words / 2.2 + 1) / Math.max(0.5, speed));
+        timings.push({ seg: { text: cur.join("\n"), label: s.label, section: si }, start: t, end: t + dur, group: ++group });
+        t += dur; cur = []; chars = 0;
+      };
+      for (const l of lines) {
+        if (cur.length >= 6 || (chars + l.length > 340 && cur.length)) flush();
+        cur.push(l); chars += l.length;
+      }
+      flush();
+    }
+  });
+  if (!timings.length) throw new Error("لا يوجد نص قابل للعرض في الأقسام المحددة");
+  return { wav: new Blob([], { type: "audio/wav" }), pcm: new Int16Array(0), rate: 22050, duration: t, timings };
+}
+
 const LEAD = 2.5; // seconds of title slide before the narration starts
 
 /** Tries each supported container/codec in turn (the first one a browser lists can still fail while recording). */
@@ -507,7 +533,15 @@ async function renderVideoOnce(sp: SpeechResult, o: VideoOptions, signal: AbortS
     const fit = fitText(s, cur.seg.text, W - pad * 2, H * 0.66, Math.round(Math.min(W, H) * 0.062), Math.round(Math.min(W, H) * 0.032));
     s.fillStyle = th.text; s.font = `${fit.fs}px ${FONT}`;
     const y0 = H * 0.5 - (fit.lines.length * fit.fs * 1.55) / 2;
-    fit.lines.forEach((l, i) => s.fillText(l, x, y0 + fit.fs + i * fit.fs * 1.55));
+    fit.lines.forEach((l, i) => {
+      const y = y0 + fit.fs + i * fit.fs * 1.55;
+      const m = /^([^:：\n]{2,42}[:：])\s+(.+)$/.exec(l); // "label: text" -> accent label
+      if (!m) { s.fillText(l, x, y); return; }
+      const head = m[1] + " ";
+      s.fillStyle = th.accent; s.fillText(head, x, y);
+      const hw = s.measureText(head).width;
+      s.fillStyle = th.text; s.fillText(m[2], rtl ? x - hw : x + hw, y);
+    });
     // footer: counter
     s.fillStyle = th.sub; s.font = `${Math.round(W * 0.022)}px ${FONT}`; s.textAlign = rtl ? "left" : "right";
     s.fillText(`${idx + 1} / ${sp.timings.length}`, rtl ? pad : W - pad, H - 26);
